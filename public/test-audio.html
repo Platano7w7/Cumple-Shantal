@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Diagnóstico de audio — cancion1.mp3</title>
+<style>
+  :root { color-scheme: dark; }
+  body { font: 14px/1.6 'Segoe UI', system-ui, sans-serif; background: radial-gradient(ellipse at 30% 20%, #1a0033 0%, #05000d 60%); color: #ffd9e8; max-width: 680px; margin: 32px auto; padding: 0 16px; }
+  h1 { color: #ff6ba8; font-weight: 600; margin-bottom: 4px; }
+  h1 span { font-size: 12px; color: #ffb3d1; font-weight: 400; }
+  .note { background: #1a001066; border: 1px solid #ff2d7844; border-radius: 10px; padding: 10px 14px; color: #ffb3d1; }
+  audio { width: 100%; margin: 16px 0; }
+  button { background: linear-gradient(135deg, #ff2d78, #ff0055); color: #fff; border: none; border-radius: 9999px; padding: 9px 16px; margin: 4px 8px 4px 0; cursor: pointer; }
+  pre { background: #12000e; border: 1px solid #ff2d7866; border-radius: 10px; padding: 12px; white-space: pre-wrap; overflow: auto; color: #ffb3d1; font-size: 12.5px; min-height: 120px; }
+  .ok { color: #7dffa3; } .err { color: #ff5d7a; } .warn { color: #ffd166; }
+</style>
+</head>
+<body>
+<h1>Prueba directa de audio <span>/test-audio.html · sin playlist ni lógica de la app</span></h1>
+<p class="note">
+  Reproductor 100% nativo: solo un <code>&lt;audio src="assets/audio/cancion1.mp3"&gt;</code>.<br />
+  Si aquí aparece el mismo error <code>NotSupportedError</code> → el problema es el <b>archivo servido en producción</b>.
+  Si aquí suena → el problema está en la lógica de la app (src/rutas).
+</p>
+
+<audio id="player" controls preload="metadata" src="assets/audio/cancion1.mp3"></audio>
+<p>
+  <button onclick="play()">▶ Reproducir cancion1</button>
+  <button onclick="testFile('cancion1.mp3')">Diagnóstico cancion1</button>
+  <button onclick="testFile('cancion2.mp3')">Diagnóstico cancion2</button>
+  <button onclick="testFile('cancion3.mp3')">Diagnóstico cancion3</button>
+</p>
+<pre id="log">Listo. Pulsa un botón o usa los controles del reproductor.</pre>
+
+<script>
+const log = document.getElementById('log')
+const player = document.getElementById('player')
+function out(t, cls) { const l = document.createElement('div'); if (cls) l.className = cls; l.textContent = t; log.appendChild(l); }
+
+function sniff(bytes) {
+  const b = bytes
+  const hex = Array.from(b.slice(0, 16)).map(x => x.toString(16).padStart(2, '0')).join(' ')
+  let tipo = 'desconocido'
+  if (b[0] === 0x49 && b[1] === 0x44 && b[2] === 0x33) tipo = 'ID3 + MP3 (etiqueta + frames MPEG esperados)'
+  else if (b[0] === 0xff && (b[1] & 0xe0) === 0xe0) tipo = 'Frame MPEG directo (MP3 sin ID3)'
+  else if (String.fromCharCode(...b.slice(0, 4)) === 'RIFF') tipo = 'WAV (NO es MP3)'
+  else if (String.fromCharCode(...b.slice(0, 4)) === 'OggS') tipo = 'OGG (NO es MP3)'
+  else if (String.fromCharCode(...b.slice(0, 4)) === 'fLaC') tipo = 'FLAC (NO es MP3)'
+  else if (String.fromCharCode(...b.slice(4, 8)) === 'ftyp') tipo = 'MP4/M4A (NO es MP3)'
+  return `Sniff: ${tipo}\nPrimeros 16 bytes: ${hex}`
+}
+
+function play() {
+  player.load()
+  player.play()
+    .then(() => out('play() OK → reproduciendo', 'ok'))
+    .catch(e => out('play() rechazado: ' + e.message, 'err'))
+}
+
+async function testFile(name) {
+  log.innerHTML = ''
+  out('→ Analizando: assets/audio/' + name)
+  player.pause()
+  player.src = 'assets/audio/' + name
+  player.load()
+  out('URL del elemento (currentSrc): ' + player.currentSrc)
+  out('Revisa la pestaña Network → Status y Content-Type de la respuesta.')
+  try {
+    const r = await fetch('assets/audio/' + name)
+    out(`fetch: HTTP ${r.status} · Content-Type: ${r.headers.get('content-type')} · Content-Length: ${r.headers.get('content-length')}`)
+    const buf = await r.arrayBuffer()
+    const b = new Uint8Array(buf)
+    out(`Bytes recibidos: ${b.length.toLocaleString()}`)
+    out(sniff(b))
+  } catch (e) {
+    out('fetch ERROR: ' + e.message, 'err')
+  }
+}
+
+const EV = ['loadstart', 'loadedmetadata', 'loadeddata', 'canplay', 'canplaythrough', 'playing', 'abort', 'stalled', 'error']
+for (const ev of EV) {
+  player.addEventListener(ev, () => {
+    if (ev === 'error') {
+      out(`EVENTO "${ev}" → code=${player.error?.code} · ${player.error?.message || player.error?.name}`, 'err')
+    } else if (ev === 'canplaythrough' || ev === 'canplay' || ev === 'playing' || ev === 'loadeddata' || ev === 'loadedmetadata') {
+      out(`EVENTO "${ev}"` + (ev === 'loadedmetadata' ? ` · duración=${Number.isFinite(player.duration) ? player.duration.toFixed(1) + 's' : '?'}` : ''), 'ok')
+    } else {
+      out(`EVENTO "${ev}"`)
+    }
+  })
+}
+</script>
+</body>
+</html>
