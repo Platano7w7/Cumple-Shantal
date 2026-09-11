@@ -4,9 +4,9 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 // Añade o elimina canciones aquí. Los archivos deben estar en `public/assets/audio/`.
 interface PlaylistTrack { title: string; file: string }
 const playlist: PlaylistTrack[] = [
-  { title: "Canción 1", file: "/public/assets/audio/cancion1.mp3" },
-  { title: "Canción 2", file: "/public/assets/audio/cancion2.mp3" },
-  { title: "Canción 3", file: "/public/assets/audio/cancion3.mp3" },
+  { title: "Canción 1", file: "assets/audio/cancion1.mp3" },
+  { title: "Canción 2", file: "assets/audio/cancion2.mp3" },
+  { title: "Canción 3", file: "assets/audio/cancion3.mp3" },
 ]
 
 // Resuelve rutas relativas a la base del sitio (funciona con Figma Make y Vite).
@@ -871,12 +871,13 @@ export default function App() {
     const onEnded = () => playTrack(currentTrackRef.current + 1)
     const onError = () => {
       const track = playlist[currentTrackRef.current]
-      if (track) {
-        console.warn(
-          `[Música] No se pudo cargar el audio "${track.title}" (${track.file}). ` +
-            'Verifica que el archivo exista en la carpeta assets/audio/.'
-        )
-      }
+      const src = audio.currentSrc || audio.src || '(sin fuente)'
+      const code = audio.error?.code ?? null
+      console.error(
+        `[Música] Error al cargar la canción "${track?.title ?? 'desconocida'}"` +
+          `${track ? ` (${track.file})` : ''}:`,
+        { url: src, errorCode: code, mediaError: audio.error?.message ?? null }
+      )
     }
     audio.addEventListener('ended', onEnded)
     audio.addEventListener('error', onError)
