@@ -4,9 +4,9 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 // Añade o elimina canciones aquí. Los archivos deben estar en `public/assets/audio/`.
 interface PlaylistTrack { title: string; file: string }
 const playlist: PlaylistTrack[] = [
-  { title: "Canción 1", file: "assets/audio/Earth, Wind & Fire - Let's Groove.mp3" },
-  { title: "Canción 2", file: "assets/audio/Michael Jackson - Don't Stop 'Til You Get Enough.mp3" },
-  { title: "Canción 3", file: "assets/audio/TWICE - RIGHT HAND GIRL.mp3" },
+  { title: "Canción 1", file: "assets/audio/cancion1.mp3" },
+  { title: "Canción 2", file: "assets/audio/cancion2.mp3" },
+  { title: "Canción 3", file: "assets/audio/cancion3.mp3" },
 ]
 
 // Resuelve rutas relativas a la base del sitio (funciona con Figma Make y Vite).
