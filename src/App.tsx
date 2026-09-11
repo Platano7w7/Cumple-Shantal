@@ -760,21 +760,127 @@ function SecretLetter({ onClose }: { onClose: () => void }) {
   )
 }
 
-// ── Music controls (button + volume slider) ──────────────────────────────────
+// ── Music player (track info + progress + transport + volume) ───────────────
+function formatTime(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) seconds = 0
+  const m = Math.floor(seconds / 60)
+  const s = Math.floor(seconds % 60)
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+}
+
 function MusicControls({
-  musicOn, onToggle, volume, onVolumeChange, trackTitle,
+  musicOn, onToggle, onToggleMute, volume, onVolumeChange,
+  trackTitle, currentTime, duration, onSeek, onPrev, onNext,
 }: {
   musicOn: boolean
   onToggle: () => void
+  onToggleMute: () => void
   volume: number
   onVolumeChange: (v: number) => void
   trackTitle: string
+  currentTime: number
+  duration: number
+  onSeek: (t: number) => void
+  onPrev: () => void
+  onNext: () => void
 }) {
   const fill = `${Math.round(volume * 100)}%`
+  const dur = Math.max(duration || 0, 0.001)
+  const pos = Math.min(Math.max(currentTime || 0, 0), dur)
+  const progFill = `${dur > 0.001 ? Math.min(100, (pos / dur) * 100) : 0}%`
+
+  // Navegación por teclado cuando el foco está sobre el contenedor del
+  // reproductor: espacio = play/pause, ←/→ = ±5s, ↑/↓ = volumen.
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const t = e.target as HTMLElement
+    if (t.closest('input, button')) return
+    if (e.key === ' ') {
+      e.preventDefault()
+      onToggle()
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault()
+      onSeek(pos - 5)
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault()
+      onSeek(pos + 5)
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      onVolumeChange(Math.min(1, Math.max(0, volume + 0.05)))
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      onVolumeChange(Math.min(1, Math.max(0, volume - 0.05)))
+    }
+  }
+
   return (
-    <div className="fixed bottom-6 right-6 z-30 flex max-w-[92vw] items-center gap-2.5">
-      <div className="volume-pill">
-        <span className="volume-title">{trackTitle}</span>
+    <div
+      className="player-pill"
+      role="region"
+      aria-label="Reproductor de música"
+      tabIndex={0}
+      onKeyDown={handleKeyDown}
+    >
+      <div className="player-info">
+        <span className="player-track">🎵 {trackTitle}</span>
+        <span className="player-time">
+          {formatTime(pos)} / {formatTime(dur)}
+        </span>
+      </div>
+
+      <input
+        type="range"
+        min={0}
+        max={dur}
+        step={0.1}
+        value={pos}
+        onChange={e => onSeek(parseFloat(e.target.value))}
+        aria-label="Progreso de la canción"
+        className="player-progress"
+        style={{ '--fill': progFill } as React.CSSProperties}
+      />
+
+      <div className="player-controls">
+        <button
+          type="button"
+          onClick={onPrev}
+          aria-label="Canción anterior"
+          title="Canción anterior"
+          className="player-button"
+        >
+          ⏮
+        </button>
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-label={musicOn ? 'Pausar canción' : 'Reproducir canción'}
+          aria-pressed={musicOn}
+          title={musicOn ? 'Pausar' : 'Reproducir'}
+          className="player-button player-button-main"
+        >
+          {musicOn ? '⏸' : '▶'}
+        </button>
+        <button
+          type="button"
+          onClick={onNext}
+          aria-label="Siguiente canción"
+          title="Siguiente canción"
+          className="player-button"
+        >
+          ⏭
+        </button>
+
+        <span className="player-sep" aria-hidden="true" />
+
+        <button
+          type="button"
+          onClick={onToggleMute}
+          aria-label={volume > 0 ? 'Silenciar música' : 'Activar sonido'}
+          aria-pressed={volume === 0}
+          title={volume > 0 ? 'Silenciar' : 'Activar sonido'}
+          className="player-button"
+        >
+          {volume > 0 ? '🔊' : '🔇'}
+        </button>
         <input
           type="range"
           min={0}
@@ -788,16 +894,6 @@ function MusicControls({
         />
         <span className="volume-value">{Math.round(volume * 100)}%</span>
       </div>
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-label={musicOn ? 'Silenciar música' : 'Reproducir música'}
-        aria-pressed={musicOn}
-        className="rounded-full w-12 h-12 flex items-center justify-center text-xl shrink-0 transition-all duration-300 hover:scale-110"
-        style={{ background: 'linear-gradient(135deg, #ff2d78, #ff0055)', boxShadow: '0 0 20px #ff2d7866', border: 'none', cursor: 'pointer' }}
-      >
-        {musicOn ? '🔊' : '🔇'}
-      </button>
     </div>
   )
 }
@@ -811,10 +907,13 @@ export default function App() {
   const [musicOn,     setMusicOn]     = useState(false)
   const [volume,      setVolume]      = useState(0.3)
   const [currentTrack,setCurrentTrack]= useState(0)
+  const [currentTime, setCurrentTime] = useState(0)
+  const [duration,    setDuration]    = useState(0)
   const [scrollY,     setScrollY]     = useState(0)
 
   const audioRef        = useRef<HTMLAudioElement | null>(null)
   const volumeRef       = useRef(0.3)
+  const lastVolumeRef   = useRef(0.3)
   const currentTrackRef = useRef(0)
   const scrollRef       = useRef<HTMLDivElement>(null)
   const timersRef       = useRef<ReturnType<typeof setTimeout>[]>([])
@@ -843,6 +942,8 @@ export default function App() {
     if (!track) return
     currentTrackRef.current = n
     setCurrentTrack(n)
+    setCurrentTime(0)
+    setDuration(0)
     audio.src = resolveAudio(track.file)
     audio.volume = volumeRef.current
     audio.play().catch(() => {})
@@ -869,6 +970,13 @@ export default function App() {
     audioRef.current = audio
 
     const onEnded = () => playTrack(currentTrackRef.current + 1)
+    const onTimeUpdate = () => {
+      setCurrentTime(Number.isFinite(audio.currentTime) ? audio.currentTime : 0)
+      setDuration(Number.isFinite(audio.duration) ? audio.duration : 0)
+    }
+    const onLoadedMetadata = () => {
+      setDuration(Number.isFinite(audio.duration) ? audio.duration : 0)
+    }
     const onError = () => {
       const track = playlist[currentTrackRef.current]
       const src = audio.currentSrc || audio.src || '(sin fuente)'
@@ -880,11 +988,15 @@ export default function App() {
       )
     }
     audio.addEventListener('ended', onEnded)
+    audio.addEventListener('timeupdate', onTimeUpdate)
+    audio.addEventListener('loadedmetadata', onLoadedMetadata)
     audio.addEventListener('error', onError)
 
     return () => {
       audio.pause()
       audio.removeEventListener('ended', onEnded)
+      audio.removeEventListener('timeupdate', onTimeUpdate)
+      audio.removeEventListener('loadedmetadata', onLoadedMetadata)
       audio.removeEventListener('error', onError)
       try {
         audio.removeAttribute('src')
@@ -921,8 +1033,46 @@ export default function App() {
     const clamped = Math.min(1, Math.max(0, v))
     volumeRef.current = clamped
     setVolume(clamped)
+    if (clamped > 0) lastVolumeRef.current = clamped
     if (audioRef.current) audioRef.current.volume = clamped
   }, [])
+
+  // Silenciar / restaurar el último volumen no nulo.
+  const toggleMute = useCallback(() => {
+    const audio = audioRef.current
+    if (!audio) return
+    if (volumeRef.current > 0) {
+      lastVolumeRef.current = volumeRef.current
+      volumeRef.current = 0
+      setVolume(0)
+      audio.volume = 0
+    } else {
+      const v = lastVolumeRef.current > 0 ? lastVolumeRef.current : 0.3
+      volumeRef.current = v
+      setVolume(v)
+      audio.volume = v
+    }
+  }, [])
+
+  // Salto a un momento concreto de la canción (click en la barra).
+  const seekTo = useCallback((t: number) => {
+    const audio = audioRef.current
+    if (!audio) return
+    if (!Number.isFinite(t)) return
+    const clamped = Math.max(0, t)
+    audio.currentTime = clamped
+    setCurrentTime(clamped)
+  }, [])
+
+  // Anterior: wrap al final de la playlist. Siguiente: wrap al inicio.
+  const prevTrack = useCallback(
+    () => playTrack(currentTrackRef.current - 1),
+    [playTrack]
+  )
+  const nextTrack = useCallback(
+    () => playTrack(currentTrackRef.current + 1),
+    [playTrack]
+  )
 
   // ── Gift click sequence ──
   const handleGiftClick = useCallback(() => {
@@ -980,6 +1130,8 @@ export default function App() {
     setMusicOn(false)
     currentTrackRef.current = 0
     setCurrentTrack(0)
+    setCurrentTime(0)
+    setDuration(0)
   }, [])
 
   useEffect(() => () => clearAllTimers(), [])
@@ -1025,9 +1177,15 @@ export default function App() {
         <MusicControls
           musicOn={musicOn}
           onToggle={toggleMusic}
+          onToggleMute={toggleMute}
           volume={volume}
           onVolumeChange={handleVolume}
           trackTitle={playlist[currentTrack]?.title ?? 'Música'}
+          currentTime={currentTime}
+          duration={duration}
+          onSeek={seekTo}
+          onPrev={prevTrack}
+          onNext={nextTrack}
         />
       </div>
     )
@@ -1058,9 +1216,15 @@ export default function App() {
         <MusicControls
           musicOn={musicOn}
           onToggle={toggleMusic}
+          onToggleMute={toggleMute}
           volume={volume}
           onVolumeChange={handleVolume}
           trackTitle={playlist[currentTrack]?.title ?? 'Música'}
+          currentTime={currentTime}
+          duration={duration}
+          onSeek={seekTo}
+          onPrev={prevTrack}
+          onNext={nextTrack}
         />
       </div>
     )
@@ -1085,9 +1249,15 @@ export default function App() {
         <MusicControls
           musicOn={musicOn}
           onToggle={toggleMusic}
+          onToggleMute={toggleMute}
           volume={volume}
           onVolumeChange={handleVolume}
           trackTitle={playlist[currentTrack]?.title ?? 'Música'}
+          currentTime={currentTime}
+          duration={duration}
+          onSeek={seekTo}
+          onPrev={prevTrack}
+          onNext={nextTrack}
         />
       </div>
     )
@@ -1271,9 +1441,15 @@ export default function App() {
       <MusicControls
         musicOn={musicOn}
         onToggle={toggleMusic}
+        onToggleMute={toggleMute}
         volume={volume}
         onVolumeChange={handleVolume}
         trackTitle={playlist[currentTrack]?.title ?? 'Música'}
+        currentTime={currentTime}
+        duration={duration}
+        onSeek={seekTo}
+        onPrev={prevTrack}
+        onNext={nextTrack}
       />
       {secretOpen && <SecretLetter onClose={() => setSecretOpen(false)} />}
     </div>

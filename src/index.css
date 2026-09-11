@@ -189,6 +189,139 @@ html, body, #root {
   display: none;
 }
 
+/* ── Music player ──────────────────────────────────────────────────────────── */
+.player-pill {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(340px, 88vw);
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: linear-gradient(160deg, rgba(26, 0, 21, 0.94), rgba(10, 0, 8, 0.9));
+  border: 1px solid #ff2d7866;
+  box-shadow: 0 0 20px #ff2d7833, 0 0 40px #ff2d7815;
+  backdrop-filter: blur(12px);
+  user-select: none;
+}
+
+.player-pill:focus-visible {
+  outline: 2px solid #ff6ba8;
+  outline-offset: 4px;
+}
+
+.player-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.player-track {
+  font-family: 'Poppins', sans-serif;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #ffd9e8;
+  text-shadow: 0 0 10px #ff2d78;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.player-time {
+  font-family: 'Poppins', sans-serif;
+  font-size: 11px;
+  font-weight: 400;
+  color: #ff6ba8;
+  text-shadow: 0 0 8px #ff2d78;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+
+.player-progress {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 5px;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, #ff2d78 var(--fill, 0%), rgba(255, 255, 255, 0.14) var(--fill, 0%));
+  outline: none;
+  cursor: pointer;
+}
+.player-progress::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #ff6ba8, #ff2d78);
+  border: 1px solid #ff6ba8;
+  box-shadow: 0 0 10px #ff2d78, 0 0 20px #ff2d7866;
+}
+.player-progress::-moz-range-thumb {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #ff6ba8, #ff2d78);
+  border: 1px solid #ff6ba8;
+  box-shadow: 0 0 10px #ff2d78, 0 0 20px #ff2d7866;
+}
+.player-progress:focus-visible {
+  outline: 2px solid #ff6ba8;
+  outline-offset: 3px;
+}
+
+.player-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.player-button {
+  width: 34px;
+  height: 34px;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  background: transparent;
+  border: 1px solid #ff2d784d;
+  color: #ffd9e8;
+  cursor: pointer;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  flex-shrink: 0;
+}
+.player-button:hover {
+  transform: scale(1.08);
+  box-shadow: 0 0 12px #ff2d7844;
+}
+.player-button:focus-visible {
+  outline: 2px solid #ff6ba8;
+  outline-offset: 3px;
+}
+
+.player-button-main {
+  width: 40px;
+  height: 40px;
+  font-size: 15px;
+  background: linear-gradient(135deg, #ff2d78, #ff0055);
+  border: none;
+  box-shadow: 0 0 20px #ff2d7866;
+  color: #fff;
+}
+
+.player-sep {
+  width: 1px;
+  height: 20px;
+  background: #ff2d7833;
+  margin: 0 3px;
+  flex-shrink: 0;
+}
+
 /* ── Volume control ────────────────────────────────────────────────────────── */
 .volume-pill {
   display: flex;
