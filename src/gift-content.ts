@@ -94,7 +94,7 @@ export const FRIDAY_CLOSING =
 // ── G3: Playlist (mixtape) ───────────────────────────────────────────────────
 // Añade o elimina canciones aquí. Deja el índice en orden cronológico y
 // agrega un `note` (opcional) con un mensajito para cada canción.
-export interface PlaylistTrack { title: string; file: string; emoji: string; note?: string }
+export interface PlaylistTrack { title: string; file: string; emoji?: string; note?: string }
 // Mensaje de bienvenida del Regalo 3 (los saltos de línea se respetan).
 export const PLAYLIST_INTRO =
   'Mira ✨\n' +
@@ -113,7 +113,7 @@ export const PLAYLIST: PlaylistTrack[] = [
     file: 'assets/audio/cancion2.mp3',
   },
   {
-    title: 'You Don't Own Me',
+    title: "You Don't Own Me",
     file: 'assets/audio/cancion3.mp3',
   },
   {

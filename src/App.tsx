@@ -1080,7 +1080,7 @@ function GiftPlaylist({
 
               <div className="mixtape-info">
                 <span className="mixtape-title">
-                  {t.emoji} {t.title}
+                  {(t.emoji ? t.emoji + ' ' : '')}{t.title}
                 </span>
                 {t.note && <span className="mixtape-note">{t.note}</span>}
               </div>
