@@ -12,6 +12,7 @@ import {
   LETTER_CLOSING,
   PLAYLIST,
   PLAYLIST_INTRO,
+  PLAYLIST_SEARCH_HINT,
   QUIZ_QUESTIONS,
   QUIZ_RESULTS,
   QUIZ_TOTAL,
@@ -27,15 +28,14 @@ import {
   SECRET_UNLOCK_HOUR,
   getGiftMeta,
 } from './gift-content'
-import type { GiftId, QuizQuestion, QuizResult } from './gift-content'
+import type { GiftId, PlaylistTrack, QuizQuestion, QuizResult } from './gift-content'
 import { loadSave, persistSave, clearSave } from './lib/persistence'
-import type { SaveState } from './lib/persistence'
+import type { SaveState, YoutubeVideo } from './lib/persistence'
 import GiftSlot from './components/GiftSlot'
 import GiftShell from './components/GiftShell'
 
 // El contenido editable (canciones, textos, preguntas) vive en `src/gift-content.ts`.
 // Los archivos de audio deben estar en `public/assets/audio/`.
-const playlist = PLAYLIST
 
 // ── Progreso guardado en el navegador ─────────────────────────────────────────
 const initialSave: SaveState = loadSave()
@@ -44,6 +44,20 @@ const initialSave: SaveState = loadSave()
 function resolveAudio(file: string): string {
   if (file.startsWith('/') || /^[a-z]+:/i.test(file)) return file
   return `${import.meta.env.BASE_URL}${file}`
+}
+
+// ¿Existe el archivo de audio? Se comprueba en caliente para ocultar canciones
+// que todavía no tienen su mp3 (p. ej. las canciones 4, 5 y 6).
+const audioExistsCache = new Map<string, Promise<boolean>>()
+function audioFileExists(file: string): Promise<boolean> {
+  const url = resolveAudio(file)
+  const cached = audioExistsCache.get(url)
+  if (cached) return cached
+  const check = fetch(url, { method: 'HEAD' })
+    .then(res => res.ok)
+    .catch(() => false)
+  audioExistsCache.set(url, check)
+  return check
 }
 
 const floatingMessages = [
@@ -68,7 +82,8 @@ const floatingMessages = [
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-type Phase     = 'intro' | 'exploding' | 'traveling' | 'hub'
+// Baraja la caja de regalo de la intro: solo se usa internamente por GiftBox
+// (componente ahora sin uso). Se mantiene el tipo para que compile sin cambios.
 type GiftPhase = 'idle' | 'squish' | 'opening' | 'exploding'
 
 interface Star     { id: number; x: number; y: number; size: number; delay: number; duration: number; zoomDur: number }
@@ -127,9 +142,9 @@ function AnimatedOnScroll({ children, delay = 0 }: { children: React.ReactNode; 
 // El desplazamiento llega como variable CSS (--parallax-px, definida en el hub
 // durante el scroll) para NO re-renderizar React en cada evento de scroll.
 function ParallaxStarLayer({
-  count, zooming = false, factor = -0.05, opacity = 1,
+  count, factor = -0.05, opacity = 1,
 }: {
-  count: number; zooming?: boolean; factor?: number; opacity?: number
+  count: number; factor?: number; opacity?: number
 }) {
   const stars = useStars(count)
   return (
@@ -154,9 +169,7 @@ function ParallaxStarLayer({
             top:  `${s.y}%`,
             width:  s.size,
             height: s.size,
-            animation: zooming
-              ? `travelThrough ${s.zoomDur}s forwards`
-              : `twinkle ${s.duration}s ${s.delay}s ease-in-out infinite`,
+            animation: `twinkle ${s.duration}s ${s.delay}s ease-in-out infinite`,
           }}
         />
       ))}
@@ -165,15 +178,11 @@ function ParallaxStarLayer({
 }
 
 // ── Star field (two parallax layers) ─────────────────────────────────────────
-function StarField({
-  count = 200, zooming = false,
-}: {
-  count?: number; zooming?: boolean
-}) {
+function StarField({ count = 200 }: { count?: number }) {
   return (
     <>
-      <ParallaxStarLayer count={Math.floor(count * 0.6)} zooming={zooming} factor={-0.05} opacity={0.7} />
-      <ParallaxStarLayer count={Math.floor(count * 0.4)} zooming={zooming} factor={-0.12} opacity={1} />
+      <ParallaxStarLayer count={Math.floor(count * 0.6)} factor={-0.05} opacity={0.7} />
+      <ParallaxStarLayer count={Math.floor(count * 0.4)} factor={-0.12} opacity={1} />
     </>
   )
 }
@@ -573,9 +582,7 @@ type ActiveMessage = {
 
 // Zonas protegidas: no pueden aparecer frases encima de estos elementos.
 const PROTECTED_ZONES: { x: number; y: number; w: number; h: number }[] = [
-  { x: 14, y: 14, w: 72, h: 42 },  // planeta + diente
-  { x: 12, y: 58, w: 76, h: 20 },  // título + subtítulo
-  { x: 20, y: 82, w: 56, h: 16 },  // botones (mensaje secreto / reinicio)
+  { x: 12, y: 8,  w: 76, h: 16 },  // título + subtítulo
   { x: 52, y: 84, w: 48, h: 15 },  // controles de música
   { x: 36, y: 2,  w: 28, h: 22 },  // carta colgante del regalo secreto
 ]
@@ -956,24 +963,110 @@ function GiftViernes() {
   )
 }
 
-// ── Regalo 3: Playlist para Shantal — mixtape con selector de canciones ─────
+// ── Regalo 3: Playlist para Shantal — mixtape + buscador de YouTube ─────────
+
+interface YoutubeSearchResult extends YoutubeVideo {}
+
+// Busca canciones con la YouTube Data API v3 (la clave vive solo en el entorno).
+async function searchYouTube(query: string): Promise<YoutubeSearchResult[]> {
+  const key = import.meta.env.VITE_YOUTUBE_API_KEY
+  if (!key) throw new Error('YOUTUBE_KEY_MISSING')
+  const url =
+    'https://www.googleapis.com/youtube/v3/search' +
+    `?part=snippet&type=video&videoEmbeddable=true&maxResults=6&q=${encodeURIComponent(query)}&key=${encodeURIComponent(key)}`
+  const res = await fetch(url)
+  if (!res.ok) throw new Error('YOUTUBE_FETCH_FAILED')
+  const data = (await res.json()) as {
+    items?: Array<{
+      id?: { videoId?: string }
+      snippet?: { title?: string; channelTitle?: string; thumbnails?: { medium?: { url?: string } } }
+    }>
+  }
+  return (data.items ?? [])
+    .filter(it => it.id?.videoId && it.snippet?.title)
+    .map(it => ({
+      videoId: it.id!.videoId!,
+      title: it.snippet!.title!,
+      channel: it.snippet!.channelTitle ?? '',
+      thumb: it.snippet!.thumbnails?.medium?.url ?? '',
+    }))
+}
+
 function GiftPlaylist({
-  onPickTrack, activeTrack, isPlaying,
+  tracks, onPickTrack, activeTrack, isPlaying,
 }: {
+  tracks: PlaylistTrack[]
   onPickTrack: (i: number) => void
   activeTrack: number
   isPlaying: boolean
 }) {
   const currentIsPlaying = (i: number) => i === activeTrack && isPlaying
 
+  const [query, setQuery] = useState(initialSave.youtubeQuery)
+  const [results, setResults] = useState<YoutubeSearchResult[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [searched, setSearched] = useState(false)
+  const [selectedVideo, setSelectedVideo] = useState<YoutubeVideo | null>(initialSave.youtubeVideo)
+
+  const persistFind = (video: YoutubeVideo | null, q: string) => {
+    persistSave({ ...loadSave(), youtubeQuery: q, youtubeVideo: video })
+  }
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const q = query.trim()
+    if (!q) return
+    setLoading(true)
+    setError(null)
+    try {
+      const found = await searchYouTube(q)
+      setResults(found)
+      setSearched(true)
+      persistFind(selectedVideo, q)
+    } catch {
+      setError(
+        import.meta.env.VITE_YOUTUBE_API_KEY
+          ? 'No se pudo buscar ahora. Inténtalo en un momento.'
+          : 'Falta configurar VITE_YOUTUBE_API_KEY para poder buscar en YouTube.'
+      )
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSelectVideo = (video: YoutubeVideo) => {
+    setSelectedVideo(video)
+    persistFind(video, query.trim())
+  }
+
+  const handleClearVideo = () => {
+    setSelectedVideo(null)
+    persistFind(null, query.trim())
+  }
+
   return (
     <div>
-      <p className="gift-opening" style={{ animation: 'fadeInUp 0.6s 0.15s both' }}>
-        {PLAYLIST_INTRO}
+      <p
+        className="gift-opening"
+        style={{ whiteSpace: 'pre-line', animation: 'fadeInUp 0.6s 0.15s both' }}
+      >
+        {PLAYLIST_INTRO.replace('{count}', String(tracks.length))}
       </p>
 
+      <div className="gift-arrow-down" style={{ animation: 'fadeInUp 0.6s 0.25s both' }}>
+        <span className="gift-arrow-icon" aria-hidden="true">👇</span>
+        <span className="gift-arrow-text">{PLAYLIST_SEARCH_HINT}</span>
+      </div>
+
+      <div className="gift-divider" aria-hidden="true" />
+
+      <h3 className="gift-section-title" style={{ animation: 'fadeInUp 0.6s 0.3s both' }}>
+        ❤️ Canciones para ti
+      </h3>
+
       <div className="mixtape-list" aria-label="Playlist de canciones elegidas para ti">
-        {PLAYLIST.map((t, i) => {
+        {tracks.map((t, i) => {
           const active = i === activeTrack
           return (
             <div key={i} className={`mixtape-track${active ? ' is-active' : ''}`}>
@@ -1010,9 +1103,87 @@ function GiftPlaylist({
         })}
       </div>
 
-      <p className="gift-note-text gift-hint" style={{ marginTop: 14 }}>
-        Esta lista crece contigo: se irán sumando más canciones para ti.
-      </p>
+      <div className="gift-divider" aria-hidden="true" />
+
+      <h3 className="gift-section-title" style={{ animation: 'fadeInUp 0.6s 0.35s both' }}>
+        🔍 Buscar cualquier canción
+      </h3>
+
+      <form className="youtube-search-form" onSubmit={handleSearch}>
+        <input
+          className="youtube-search-input"
+          type="text"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          placeholder="Escribe una canción…"
+          aria-label="Buscar una canción en YouTube"
+        />
+        <button
+          type="submit"
+          className="gift-cta-primary youtube-search-btn"
+          disabled={loading || query.trim().length === 0}
+        >
+          {loading ? 'Buscando…' : '🎵 Buscar'}
+        </button>
+      </form>
+
+      {error && (
+        <p className="youtube-msg is-error" role="status">{error}</p>
+      )}
+
+      {searched && !loading && results.length === 0 && !error && (
+        <p className="youtube-msg" role="status">
+          No encontré resultados para «{query.trim()}». Prueba con otra canción.
+        </p>
+      )}
+
+      {results.length > 0 && (
+        <ul className="youtube-results" aria-label="Resultados de la búsqueda">
+          {results.map(video => (
+            <li key={video.videoId}>
+              <button
+                type="button"
+                className="youtube-result"
+                onClick={() => handleSelectVideo(video)}
+                aria-label={`Reproducir: ${video.title}`}
+              >
+                <img className="youtube-thumb" src={video.thumb} alt="" loading="lazy" />
+                <span className="youtube-result-info">
+                  <span className="youtube-result-title">{video.title}</span>
+                  <span className="youtube-result-channel">{video.channel}</span>
+                </span>
+                <span className="youtube-result-play" aria-hidden="true">▶</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {selectedVideo && (
+        <div className="youtube-player" style={{ animation: 'fadeInUp 0.5s both' }}>
+          <div className="youtube-player-head">
+            <span className="youtube-player-now" role="status">
+              ► Reproduciendo: {selectedVideo.title}
+            </span>
+            <button
+              type="button"
+              className="youtube-player-close"
+              onClick={handleClearVideo}
+              aria-label="Quitar video"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="youtube-player-frame">
+            <iframe
+              src={`https://www.youtube.com/embed/${selectedVideo.videoId}?autoplay=1`}
+              title={selectedVideo.title}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -1211,9 +1382,10 @@ function GiftQuiz({
 
 // ── Cuerpo del regalo (Fase 1: contenido de ejemplo) ─────────────────────────
 function GiftPlaceholderBody({
-  id, onPickTrack, activeTrack, isPlaying, quizBest, onQuizFinish,
+  id, tracks, onPickTrack, activeTrack, isPlaying, quizBest, onQuizFinish,
 }: {
   id: GiftId
+  tracks: PlaylistTrack[]
   onPickTrack?: (i: number) => void
   activeTrack: number
   isPlaying: boolean
@@ -1229,6 +1401,7 @@ function GiftPlaceholderBody({
   if (id === 3) {
     return (
       <GiftPlaylist
+        tracks={tracks}
         onPickTrack={onPickTrack ?? (() => {})}
         activeTrack={activeTrack}
         isPlaying={isPlaying}
@@ -1321,10 +1494,23 @@ function SecretDialog({
 
 // ── Main App ──────────────────────────────────────────────────────────────────
 export default function App() {
-  const [phase,       setPhase]       = useState<Phase>('intro')
-  const [giftPhase,   setGiftPhase]   = useState<GiftPhase>('idle')
-  const [planetStage, setPlanetStage] = useState(0)
   const [musicOn,     setMusicOn]     = useState(false)
+
+  // Playlist efectiva: solo las canciones cuyo archivo de audio existe.
+  const [playlistTracks, setPlaylistTracks] = useState<PlaylistTrack[]>([])
+  useEffect(() => {
+    let cancelled = false
+    Promise.all(PLAYLIST.map(t => audioFileExists(t.file)))
+      .then(exists => {
+        if (cancelled) return
+        const available = PLAYLIST.filter((_, i) => exists[i])
+        setPlaylistTracks(available.length > 0 ? available : PLAYLIST)
+      })
+      .catch(() => {
+        if (!cancelled) setPlaylistTracks(PLAYLIST)
+      })
+    return () => { cancelled = true }
+  }, [])
   const [volume,      setVolume]      = useState(initialSave.volume)
   const [currentTrack,setCurrentTrack]= useState(initialSave.pickedTrack)
   const [currentTime, setCurrentTime] = useState(0)
@@ -1361,6 +1547,7 @@ export default function App() {
   const lastVolumeRef   = useRef(initialSave.volume > 0 ? initialSave.volume : 0.3)
   const currentTrackRef = useRef(initialSave.pickedTrack)
   const hubRef          = useRef<HTMLDivElement | null>(null)
+  const hasStartedMusicRef = useRef(false)
   const timersRef       = useRef<ReturnType<typeof setTimeout>[]>([])
 
   // Parallax por scroll sin re-renderizar React: escribe solo la variable CSS.
@@ -1384,9 +1571,9 @@ export default function App() {
   // ── Playlist helpers ──
   const playTrack = useCallback((index: number) => {
     const audio = audioRef.current
-    if (!audio || playlist.length === 0) return
-    const n = ((index % playlist.length) + playlist.length) % playlist.length
-    const track = playlist[n]
+    if (!audio || playlistTracks.length === 0) return
+    const n = ((index % playlistTracks.length) + playlistTracks.length) % playlistTracks.length
+    const track = playlistTracks[n]
     if (!track) return
     currentTrackRef.current = n
     setCurrentTrack(n)
@@ -1395,18 +1582,7 @@ export default function App() {
     audio.src = resolveAudio(track.file)
     audio.volume = volumeRef.current
     audio.play().catch(() => {})
-  }, [])
-
-  // Unicelta el audio dentro del gesto del usuario (clic en el regalo): precarga
-  // y silencia la primera canción para que luego pueda sonar sin ser bloqueada.
-  const unlockAudio = useCallback(() => {
-    const audio = audioRef.current
-    if (!audio || playlist.length === 0 || audio.getAttribute('src')) return
-    const track = playlist[currentTrackRef.current] ?? playlist[0]
-    audio.src = resolveAudio(track.file)
-    audio.volume = volumeRef.current
-    audio.play().then(() => audio.pause()).catch(() => {})
-  }, [])
+  }, [playlistTracks])
 
   // Elemento de audio único: al terminar avanza a la siguiente canción y al
   // llegar a la última vuelve a la primera (loop de playlist).
@@ -1426,7 +1602,7 @@ export default function App() {
       setDuration(Number.isFinite(audio.duration) ? audio.duration : 0)
     }
     const onError = () => {
-      const track = playlist[currentTrackRef.current]
+      const track = playlistTracks[currentTrackRef.current]
       const src = audio.currentSrc || audio.src || '(sin fuente)'
       const code = audio.error?.code ?? null
       console.error(
@@ -1455,14 +1631,14 @@ export default function App() {
   }, [playTrack])
 
   const startMusic = useCallback(() => {
-    if (!audioRef.current || playlist.length === 0) return
+    if (!audioRef.current || playlistTracks.length === 0) return
     playTrack(0)
     setMusicOn(true)
   }, [playTrack])
 
   const toggleMusic = useCallback(() => {
     const audio = audioRef.current
-    if (!audio || playlist.length === 0) return
+    if (!audio || playlistTracks.length === 0) return
     if (musicOn) {
       audio.pause()
       setMusicOn(false)
@@ -1522,68 +1698,6 @@ export default function App() {
     [playTrack]
   )
 
-  // ── Gift click sequence ──
-  const handleGiftClick = useCallback(() => {
-    if (giftPhase !== 'idle') return
-    clearAllTimers()
-    unlockAudio() // desbloquea el audio dentro del gesto del usuario
-
-    // 1. Squish
-    setGiftPhase('squish')
-
-    // 2. Lid opens
-    addTimer(() => setGiftPhase('opening'), 320)
-
-    // 3. Body explodes
-    addTimer(() => setGiftPhase('exploding'), 900)
-
-    // 4. Switch to "exploding" phase for full-screen confetti
-    addTimer(() => setPhase('exploding'), 1100)
-
-    // 5. Travel through space
-    addTimer(() => setPhase('traveling'), 2000)
-
-    // 6. Hub arrives — start music + planet birth sequence
-    addTimer(() => {
-      setPhase('hub')
-      startMusic()
-      setPlanetStage(1)                               // flash ring
-    }, 3200)
-    addTimer(() => setPlanetStage(2), 3200 + 500)    // particle cloud
-    addTimer(() => setPlanetStage(3), 3200 + 1000)   // planet scales in
-    addTimer(() => setPlanetStage(4), 3200 + 1700)   // tooth + orbits
-    addTimer(() => setPlanetStage(5), 3200 + 2500)   // title
-
-  }, [giftPhase, startMusic, unlockAudio])
-
-  // ── Restart ──
-  const handleRestart = useCallback(() => {
-    clearAllTimers()
-    setPhase('intro')
-    setGiftPhase('idle')
-    setPlanetStage(0)
-    if (hubRef.current) {
-      const scroller = hubRef.current.querySelector<HTMLElement>('.main-scroll')
-      if (scroller) scroller.scrollTop = 0
-      hubRef.current.style.setProperty('--parallax-px', '0')
-    }
-
-    // Música: detener y volver a la primera canción. El volumen se conserva.
-    const audio = audioRef.current
-    if (audio) {
-      audio.pause()
-      try {
-        audio.removeAttribute('src')
-        audio.load()
-      } catch { /* noop */ }
-    }
-    setMusicOn(false)
-    currentTrackRef.current = 0
-    setCurrentTrack(0)
-    setCurrentTime(0)
-    setDuration(0)
-  }, [])
-
   useEffect(() => () => clearAllTimers(), [])
 
   // ── Progreso de los regalos ──
@@ -1599,6 +1713,11 @@ export default function App() {
 
   const handleOpenGift = useCallback((id: GiftId) => {
     setOpenGift(id)
+    // Inicia la música con el primer regalo abierto (antes lo hacía la intro).
+    if (!hasStartedMusicRef.current) {
+      hasStartedMusicRef.current = true
+      startMusic()
+    }
     // La playlist desbloquea el siguiente regalo con solo visitarla
     // (además del botón "Hecho ✨" en caso de querer cerrarla antes).
     if (id === 3 && !completedGifts[3]) {
@@ -1606,7 +1725,7 @@ export default function App() {
       setUnlockedBanner(4)
       addTimer(() => setUnlockedBanner(null), 3600)
     }
-  }, [completedGifts])
+  }, [completedGifts, startMusic])
 
   const handlePickTrack = useCallback((i: number) => {
     playTrack(i)
@@ -1701,6 +1820,7 @@ export default function App() {
   // ── Persistencia del progreso (con debounce) ──
   useEffect(() => {
     const save: SaveState = {
+      ...loadSave(),
       version: 1,
       completedGifts: GIFT_META.filter(g => completedGifts[g.id]).map(g => g.id),
       quizBest,
@@ -1714,128 +1834,6 @@ export default function App() {
   // ── Shared background ──
   const spaceBg: React.CSSProperties = {
     background: 'radial-gradient(ellipse at 20% 50%, #1a003399 0%, transparent 50%), radial-gradient(ellipse at 80% 20%, #3300224d 0%, transparent 45%), radial-gradient(ellipse at 60% 80%, #220033aa 0%, transparent 40%), #05000d',
-  }
-
-  // ════════════════════════════════════════════════════════════════════════════
-  // INTRO
-  // ════════════════════════════════════════════════════════════════════════════
-  if (phase === 'intro') {
-    return (
-      <div className="relative w-full h-full flex flex-col items-center justify-center overflow-hidden" style={spaceBg}>
-        <StarField count={200} />
-        <FloatingParticles />
-        <Sparkles count={10} />
-
-        <div className="relative z-10 flex flex-col items-center gap-8">
-          <div style={{ position: 'relative' }}>
-            <GiftBox onClick={handleGiftClick} giftPhase={giftPhase} />
-            <OpeningBurst active={giftPhase === 'opening'} />
-          </div>
-          <p
-            className="text-center"
-            style={{
-              fontFamily:    "'Poppins', sans-serif",
-              color:         '#ffb3d1',
-              fontSize:      16,
-              fontWeight:    300,
-              textShadow:    '0 0 10px #ff2d78',
-              letterSpacing: '0.08em',
-              animation:     'fadeIn 2s 0.8s both',
-              opacity:       giftPhase !== 'idle' ? 0 : undefined,
-              transition:    'opacity 0.3s ease',
-            }}
-          >
-            Presiona para abrir tu regalo 🎁
-          </p>
-        </div>
-
-        <MusicControls
-          musicOn={musicOn}
-          onToggle={toggleMusic}
-          onToggleMute={toggleMute}
-          volume={volume}
-          onVolumeChange={handleVolume}
-          trackTitle={playlist[currentTrack]?.title ?? 'Música'}
-          currentTime={currentTime}
-          duration={duration}
-          onSeek={seekTo}
-          onPrev={prevTrack}
-          onNext={nextTrack}
-        />
-      </div>
-    )
-  }
-
-  // ════════════════════════════════════════════════════════════════════════════
-  // EXPLODING
-  // ════════════════════════════════════════════════════════════════════════════
-  if (phase === 'exploding') {
-    return (
-      <div className="relative w-full h-full flex items-center justify-center overflow-hidden" style={spaceBg}>
-        <StarField count={200} />
-        <ConfettiBurst />
-        <FloatingParticles />
-        <p
-          className="absolute"
-          style={{
-            fontFamily: "'Cinzel', serif",
-            color:      '#ff6ba8',
-            fontSize:   'clamp(22px, 5vw, 36px)',
-            fontWeight: 600,
-            textShadow: '0 0 30px #ff2d78',
-            animation:  'fadeInUp 0.6s 0.2s both',
-          }}
-        >
-          ✨ Feliz Cumpleaños ✨
-        </p>
-        <MusicControls
-          musicOn={musicOn}
-          onToggle={toggleMusic}
-          onToggleMute={toggleMute}
-          volume={volume}
-          onVolumeChange={handleVolume}
-          trackTitle={playlist[currentTrack]?.title ?? 'Música'}
-          currentTime={currentTime}
-          duration={duration}
-          onSeek={seekTo}
-          onPrev={prevTrack}
-          onNext={nextTrack}
-        />
-      </div>
-    )
-  }
-
-  // ════════════════════════════════════════════════════════════════════════════
-  // TRAVELING
-  // ════════════════════════════════════════════════════════════════════════════
-  if (phase === 'traveling') {
-    return (
-      <div className="relative w-full h-full flex items-center justify-center overflow-hidden" style={spaceBg}>
-        <StarField count={300} zooming />
-        <ConfettiBurst />
-        <div className="absolute flex flex-col items-center gap-4" style={{ animation: 'fadeInUp 0.8s 0.1s both' }}>
-          <div style={{ fontSize: 80, filter: 'drop-shadow(0 0 30px #ff2d78)', animation: 'float 2s ease-in-out infinite' }}>
-            🌍
-          </div>
-          <p style={{ fontFamily: "'Cinzel', serif", color: '#ff6ba8', fontSize: 20, textShadow: '0 0 20px #ff2d78', animation: 'glowText 2s ease-in-out infinite' }}>
-            Viajando a tu mundo especial…
-          </p>
-        </div>
-        <MusicControls
-          musicOn={musicOn}
-          onToggle={toggleMusic}
-          onToggleMute={toggleMute}
-          volume={volume}
-          onVolumeChange={handleVolume}
-          trackTitle={playlist[currentTrack]?.title ?? 'Música'}
-          currentTime={currentTime}
-          duration={duration}
-          onSeek={seekTo}
-          onPrev={prevTrack}
-          onNext={nextTrack}
-        />
-      </div>
-    )
   }
 
   // ════════════════════════════════════════════════════════════════════════════
@@ -1919,18 +1917,8 @@ export default function App() {
         <section className="min-h-screen flex flex-col items-center justify-center gap-10 px-6 py-16 relative">
           <Sparkles count={10} />
 
-          {/* Planet birth sequence */}
-          <PlanetReveal stage={planetStage} />
-
-          {/* Title — only visible at stage 5 */}
-          <div
-            className="text-center"
-            style={{
-              opacity:    planetStage >= 5 ? 1 : 0,
-              transition: 'opacity 0.6s ease',
-              animation:  planetStage >= 5 ? 'titleReveal 1s cubic-bezier(0.25, 0.46, 0.45, 0.94) both' : 'none',
-            }}
-          >
+          {/* Title — siempre visible, sin planeta de fondo */}
+          <div className="text-center" style={{ animation: 'titleReveal 1s cubic-bezier(0.25, 0.46, 0.45, 0.94) both' }}>
             <h1
               style={{
                 fontFamily:            "'Cinzel', serif",
@@ -1963,7 +1951,7 @@ export default function App() {
           </div>
 
           {/* ── Elige un regalo ── */}
-          <div className="text-center" style={{ opacity: planetStage >= 5 ? 1 : 0, transition: 'opacity 0.6s 0.5s ease' }}>
+          <div className="text-center" style={{ animation: 'fadeInUp 0.8s 0.35s both' }}>
             <h2 className="hub-heading">🎁 Elige un regalo</h2>
             <p className="hub-progress">
               Completa cada regalo para desbloquear el siguiente · {completedCount} de {GIFT_META.length}
@@ -1986,9 +1974,6 @@ export default function App() {
 
           {/* ── Acciones ── */}
           <div className="hub-actions">
-            <button type="button" onClick={handleRestart} className="gift-cta-ghost">
-              🎁 Abrir regalo nuevamente
-            </button>
             <button type="button" onClick={handleClearProgress} className="gift-cta-ghost">
               🗑️ Borrar progreso
             </button>
@@ -2004,7 +1989,7 @@ export default function App() {
         onToggleMute={toggleMute}
         volume={volume}
         onVolumeChange={handleVolume}
-        trackTitle={playlist[currentTrack]?.title ?? 'Música'}
+        trackTitle={playlistTracks[currentTrack]?.title ?? 'Música'}
         currentTime={currentTime}
         duration={duration}
         onSeek={seekTo}
@@ -2022,6 +2007,7 @@ export default function App() {
         >
           <GiftPlaceholderBody
             id={openGift}
+            tracks={playlistTracks}
             onPickTrack={handlePickTrack}
             activeTrack={currentTrack}
             isPlaying={musicOn}

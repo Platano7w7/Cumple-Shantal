@@ -15,6 +15,7 @@ function GiftSlot({
 
   const statusLabel = completed ? 'Completado' : unlocked ? 'Disponible' : 'Bloqueado'
   const stateClass = completed ? 'is-completed' : unlocked ? 'is-unlocked' : 'is-locked'
+  const tagline = completed ? 'Ya lo abriste ✨' : unlocked ? 'Toca para descubrir ✨' : 'Completa el anterior para desbloquear'
 
   const handleClick = () => {
     if (unlocked) {
@@ -37,19 +38,19 @@ function GiftSlot({
           handleClick()
         }
       }}
-      aria-label={`Regalo ${meta.id} de 5: ${meta.title}. ${statusLabel}`}
+      aria-label={`Regalo ${meta.id} de 5. ${statusLabel}`}
       style={{
         animation: `fadeInUp 0.6s ${delay}s both`,
       }}
     >
       <div className="gift-emoji" aria-hidden="true">
-        {completed || unlocked ? meta.emoji : '🎁'}
+        🎁
       </div>
       <div className="gift-indicator" aria-hidden="true">
         {completed ? '✓' : unlocked ? '🔓' : '🔒'}
       </div>
-      <h3 className="gift-title">{meta.title}</h3>
-      <p className="gift-tagline">{meta.tagline}</p>
+      <h3 className="gift-title">Regalo {meta.id}</h3>
+      <p className="gift-tagline">{tagline}</p>
       <div className="gift-status">
         {completed ? 'Completado ✨' : unlocked ? 'Abrir' : 'Bloqueado — completa el anterior'}
       </div>

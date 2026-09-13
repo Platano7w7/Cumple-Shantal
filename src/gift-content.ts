@@ -95,26 +95,38 @@ export const FRIDAY_CLOSING =
 // Añade o elimina canciones aquí. Deja el índice en orden cronológico y
 // agrega un `note` (opcional) con un mensajito para cada canción.
 export interface PlaylistTrack { title: string; file: string; emoji: string; note?: string }
+// Mensaje de bienvenida del Regalo 3 (los saltos de línea se respetan).
 export const PLAYLIST_INTRO =
-  'Estas son las canciones que elegí especialmente para ti. Un pequeño mixtape de lo que compartimos. Pulsa play y deja que suene.'
+  'Mira ✨\n' +
+  'Aquí están tus {count} canciones favoritas que elegí para ti ❤️\n' +
+  '\n' +
+  'Pero si quieres escuchar cualquier otra canción,\n' +
+  'también puedes buscarla aquí.'
+export const PLAYLIST_SEARCH_HINT = 'Busca aquí'
 export const PLAYLIST: PlaylistTrack[] = [
   {
-    title: 'Canción 1',
+    title: 'Busy Woman',
     file: 'assets/audio/cancion1.mp3',
-    emoji: '🎶',
-    note: 'La que siempre nos hace cantar sin darnos cuenta.',
   },
   {
-    title: 'Canción 2',
+    title: 'We Found Love',
     file: 'assets/audio/cancion2.mp3',
-    emoji: '💖',
-    note: 'Esa canción que es imposible escuchar y no pensar en ti.',
   },
   {
-    title: 'Canción 3',
+    title: 'You Don't Own Me',
     file: 'assets/audio/cancion3.mp3',
-    emoji: '✨',
-    note: 'Para los viernes que se quedaron con nosotros.',
+  },
+  {
+    title: 'It Must Have Been Love',
+    file: 'assets/audio/cancion4.mp3',
+  },
+  {
+    title: 'Open Arms',
+    file: 'assets/audio/cancion5.mp3',
+  },
+  {
+    title: 'My One And Only love',
+    file: 'assets/audio/cancion6.mp3',
   },
 ]
 
