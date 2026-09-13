@@ -11,8 +11,8 @@ import {
   LETTER_BLOCKS,
   LETTER_CLOSING,
   PLAYLIST,
+  PLAYLIST_CLOSING,
   PLAYLIST_INTRO,
-  PLAYLIST_SEARCH_HINT,
   QUIZ_QUESTIONS,
   QUIZ_RESULTS,
   QUIZ_TOTAL,
@@ -904,7 +904,45 @@ function MusicControls({
   )
 }
 
-// ── Regalo 1: Los inicios — recorrido por el comienzo de la amistad ──────────
+// ── Reproductor global de YouTube ────────────────────────────────────────────
+// Vive fuera del contenido del regalo: al seleccionar un video en el Regalo 1,
+// se monta aquí y sigue reproduciéndose aunque se cierre el GiftShell.
+function YoutubeGlobalPlayer({
+  video,
+  onClear,
+}: {
+  video: YoutubeVideo
+  onClear: () => void
+}) {
+  return (
+    <div className="youtube-global" aria-label="Reproductor de YouTube">
+      <div className="youtube-player-head">
+        <span className="youtube-player-now" role="status">
+          ► {video.title}
+        </span>
+        <button
+          type="button"
+          className="youtube-player-close"
+          onClick={onClear}
+          aria-label="Quitar video"
+          title="Quitar video"
+        >
+          ✕
+        </button>
+      </div>
+      <div className="youtube-player-frame">
+        <iframe
+          src={`https://www.youtube.com/embed/${video.videoId}?autoplay=1`}
+          title={video.title}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowFullScreen
+        />
+      </div>
+    </div>
+  )
+}
+
+// ── Regalo 3: Los inicios — recorrido por el comienzo de la amistad ──────────
 function GiftInicios() {
   return (
     <div>
@@ -964,7 +1002,7 @@ function GiftViernes() {
   )
 }
 
-// ── Regalo 3: Playlist para Shantal — mixtape + buscador de YouTube ─────────
+// ── Regalo 1: Playlist para Shantal — mixtape + buscador de YouTube ─────────
 
 interface YoutubeSearchResult extends YoutubeVideo {}
 
@@ -995,28 +1033,28 @@ async function searchYouTube(query: string): Promise<YoutubeSearchResult[]> {
 
 function GiftPlaylist({
   tracks, onPickTrack, activeTrack, isPlaying,
+  youtubeQuery, youtubeVideo, onYouTubeQueryChange, onSelectVideo, onClearVideo,
 }: {
   tracks: PlaylistTrack[]
   onPickTrack: (i: number) => void
   activeTrack: number
   isPlaying: boolean
+  youtubeQuery: string
+  youtubeVideo: YoutubeVideo | null
+  onYouTubeQueryChange: (q: string) => void
+  onSelectVideo: (video: YoutubeVideo) => void
+  onClearVideo: () => void
 }) {
   const currentIsPlaying = (i: number) => i === activeTrack && isPlaying
 
-  const [query, setQuery] = useState(initialSave.youtubeQuery)
   const [results, setResults] = useState<YoutubeSearchResult[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [searched, setSearched] = useState(false)
-  const [selectedVideo, setSelectedVideo] = useState<YoutubeVideo | null>(initialSave.youtubeVideo)
-
-  const persistFind = (video: YoutubeVideo | null, q: string) => {
-    persistSave({ ...loadSave(), youtubeQuery: q, youtubeVideo: video })
-  }
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault()
-    const q = query.trim()
+    const q = youtubeQuery.trim()
     if (!q) return
     setLoading(true)
     setError(null)
@@ -1024,7 +1062,6 @@ function GiftPlaylist({
       const found = await searchYouTube(q)
       setResults(found)
       setSearched(true)
-      persistFind(selectedVideo, q)
     } catch {
       setError(
         import.meta.env.VITE_YOUTUBE_API_KEY
@@ -1037,13 +1074,7 @@ function GiftPlaylist({
   }
 
   const handleSelectVideo = (video: YoutubeVideo) => {
-    setSelectedVideo(video)
-    persistFind(video, query.trim())
-  }
-
-  const handleClearVideo = () => {
-    setSelectedVideo(null)
-    persistFind(null, query.trim())
+    onSelectVideo(video)
   }
 
   return (
@@ -1052,17 +1083,10 @@ function GiftPlaylist({
         className="gift-opening"
         style={{ whiteSpace: 'pre-line', animation: 'fadeInUp 0.6s 0.15s both' }}
       >
-        {PLAYLIST_INTRO.replace('{count}', String(tracks.length))}
+        {PLAYLIST_INTRO}
       </p>
 
-      <div className="gift-arrow-down" style={{ animation: 'fadeInUp 0.6s 0.25s both' }}>
-        <span className="gift-arrow-icon" aria-hidden="true">👇</span>
-        <span className="gift-arrow-text">{PLAYLIST_SEARCH_HINT}</span>
-      </div>
-
-      <div className="gift-divider" aria-hidden="true" />
-
-      <h3 className="gift-section-title" style={{ animation: 'fadeInUp 0.6s 0.3s both' }}>
+      <h3 className="gift-section-title" style={{ animation: 'fadeInUp 0.6s 0.2s both' }}>
         ❤️ Canciones para ti
       </h3>
 
@@ -1104,7 +1128,16 @@ function GiftPlaylist({
         })}
       </div>
 
-      <div className="gift-divider" aria-hidden="true" />
+      <p
+        className="gift-opening"
+        style={{ whiteSpace: 'pre-line', animation: 'fadeInUp 0.6s 0.25s both' }}
+      >
+        {PLAYLIST_CLOSING}
+      </p>
+
+      <div className="gift-arrow-down" style={{ animation: 'fadeInUp 0.6s 0.3s both' }}>
+        <span className="gift-arrow-icon" aria-hidden="true">👇</span>
+      </div>
 
       <h3 className="gift-section-title" style={{ animation: 'fadeInUp 0.6s 0.35s both' }}>
         🔍 Buscar cualquier canción
@@ -1114,15 +1147,15 @@ function GiftPlaylist({
         <input
           className="youtube-search-input"
           type="text"
-          value={query}
-          onChange={e => setQuery(e.target.value)}
+          value={youtubeQuery}
+          onChange={e => onYouTubeQueryChange(e.target.value)}
           placeholder="Escribe una canción…"
           aria-label="Buscar una canción en YouTube"
         />
         <button
           type="submit"
           className="gift-cta-primary youtube-search-btn"
-          disabled={loading || query.trim().length === 0}
+          disabled={loading || youtubeQuery.trim().length === 0}
         >
           {loading ? 'Buscando…' : '🎵 Buscar'}
         </button>
@@ -1134,7 +1167,7 @@ function GiftPlaylist({
 
       {searched && !loading && results.length === 0 && !error && (
         <p className="youtube-msg" role="status">
-          No encontré resultados para «{query.trim()}». Prueba con otra canción.
+          No encontré resultados para «{youtubeQuery.trim()}». Prueba con otra canción.
         </p>
       )}
 
@@ -1158,32 +1191,6 @@ function GiftPlaylist({
             </li>
           ))}
         </ul>
-      )}
-
-      {selectedVideo && (
-        <div className="youtube-player" style={{ animation: 'fadeInUp 0.5s both' }}>
-          <div className="youtube-player-head">
-            <span className="youtube-player-now" role="status">
-              ► Reproduciendo: {selectedVideo.title}
-            </span>
-            <button
-              type="button"
-              className="youtube-player-close"
-              onClick={handleClearVideo}
-              aria-label="Quitar video"
-            >
-              ✕
-            </button>
-          </div>
-          <div className="youtube-player-frame">
-            <iframe
-              src={`https://www.youtube.com/embed/${selectedVideo.videoId}?autoplay=1`}
-              title={selectedVideo.title}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowFullScreen
-            />
-          </div>
-        </div>
       )}
     </div>
   )
@@ -1384,6 +1391,7 @@ function GiftQuiz({
 // ── Cuerpo del regalo (Fase 1: contenido de ejemplo) ─────────────────────────
 function GiftPlaceholderBody({
   id, tracks, onPickTrack, activeTrack, isPlaying, quizBest, onQuizFinish,
+  youtubeQuery, youtubeVideo, onYouTubeQueryChange, onSelectVideo, onClearVideo,
 }: {
   id: GiftId
   tracks: PlaylistTrack[]
@@ -1392,6 +1400,11 @@ function GiftPlaceholderBody({
   isPlaying: boolean
   quizBest: number
   onQuizFinish: (score: number) => void
+  youtubeQuery: string
+  youtubeVideo: YoutubeVideo | null
+  onYouTubeQueryChange: (q: string) => void
+  onSelectVideo: (video: YoutubeVideo) => void
+  onClearVideo: () => void
 }) {
   if (id === 1) {
     return (
@@ -1400,6 +1413,11 @@ function GiftPlaceholderBody({
         onPickTrack={onPickTrack ?? (() => {})}
         activeTrack={activeTrack}
         isPlaying={isPlaying}
+        youtubeQuery={youtubeQuery}
+        youtubeVideo={youtubeVideo}
+        onYouTubeQueryChange={onYouTubeQueryChange}
+        onSelectVideo={onSelectVideo}
+        onClearVideo={onClearVideo}
       />
     )
   }
@@ -1507,6 +1525,11 @@ export default function App() {
   const [musicBarVisible, setMusicBarVisible] = useState(() =>
     initialSave.completedGifts.includes(1)
   )
+
+  // Video de YouTube seleccionado en el Regalo 1. Vive aquí (a nivel global)
+  // para que el reproductor siga sonando aunque se cierre el regalo.
+  const [youtubeQuery,  setYoutubeQuery]  = useState(initialSave.youtubeQuery)
+  const [youtubeVideo,  setYoutubeVideo]  = useState<YoutubeVideo | null>(initialSave.youtubeVideo)
 
   // Playlist efectiva: solo las canciones cuyo archivo de audio existe.
   const [playlistTracks, setPlaylistTracks] = useState<PlaylistTrack[]>([])
@@ -1829,6 +1852,8 @@ export default function App() {
     setUnlockedBanner(null)
     setOpenGift(null)
     setMusicBarVisible(false)
+    setYoutubeVideo(null)
+    setYoutubeQuery('')
   }, [])
 
   // ── Persistencia del progreso (con debounce) ──
@@ -1840,10 +1865,12 @@ export default function App() {
       quizBest,
       pickedTrack: currentTrack,
       volume,
+      youtubeQuery,
+      youtubeVideo,
     }
     const id = window.setTimeout(() => persistSave(save), 250)
     return () => window.clearTimeout(id)
-  }, [completedGifts, quizBest, currentTrack, volume])
+  }, [completedGifts, quizBest, currentTrack, volume, youtubeQuery, youtubeVideo])
 
   // ── Shared background ──
   const spaceBg: React.CSSProperties = {
@@ -2014,6 +2041,10 @@ export default function App() {
         />
       )}
 
+      {youtubeVideo && (
+        <YoutubeGlobalPlayer video={youtubeVideo} onClear={() => setYoutubeVideo(null)} />
+      )}
+
       {openGift !== null && (
         <GiftShell
           meta={getGiftMeta(openGift)}
@@ -2022,15 +2053,20 @@ export default function App() {
           onClose={() => setOpenGift(null)}
           onComplete={() => completeGift(openGift)}
         >
-          <GiftPlaceholderBody
-            id={openGift}
-            tracks={playlistTracks}
-            onPickTrack={handlePickTrack}
-            activeTrack={currentTrack}
-            isPlaying={musicOn}
-            quizBest={quizBest}
-            onQuizFinish={handleQuizFinish}
-          />
+<GiftPlaceholderBody
+          id={openGift}
+          tracks={playlistTracks}
+          onPickTrack={handlePickTrack}
+          activeTrack={currentTrack}
+          isPlaying={musicOn}
+          quizBest={quizBest}
+          onQuizFinish={handleQuizFinish}
+          youtubeQuery={youtubeQuery}
+          youtubeVideo={youtubeVideo}
+          onYouTubeQueryChange={setYoutubeQuery}
+          onSelectVideo={setYoutubeVideo}
+          onClearVideo={() => setYoutubeVideo(null)}
+        />
         </GiftShell>
       )}
     </div>

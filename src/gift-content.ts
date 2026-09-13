@@ -95,14 +95,10 @@ export const FRIDAY_CLOSING =
 // Añade o elimina canciones aquí. Deja el índice en orden cronológico y
 // agrega un `note` (opcional) con un mensajito para cada canción.
 export interface PlaylistTrack { title: string; file: string; emoji?: string; note?: string }
-// Mensaje de bienvenida del Regalo 3 (los saltos de línea se respetan).
-export const PLAYLIST_INTRO =
-  'Mira ✨\n' +
-  'Aquí están tus {count} canciones favoritas que elegí para ti ❤️\n' +
-  '\n' +
-  'Pero si quieres escuchar cualquier otra canción,\n' +
-  'también puedes buscarla aquí.'
-export const PLAYLIST_SEARCH_HINT = 'Busca aquí'
+// Mensajes de bienvenida y cierre del Regalo 1 (los saltos de línea se respetan).
+export const PLAYLIST_INTRO = '✨ Mira ✨\n\nEstas son tus canciones favoritas ❤️'
+export const PLAYLIST_CLOSING =
+  '✨ Pero si hoy quieres escuchar otra canción,\ntambién puedes buscarla aquí.'
 export const PLAYLIST: PlaylistTrack[] = [
   {
     title: 'Busy Woman',
