@@ -775,7 +775,7 @@ function formatTime(seconds: number): string {
 
 function MusicControls({
   musicOn, onToggle, onToggleMute, volume, onVolumeChange,
-  trackTitle, currentTime, duration, onSeek, onPrev, onNext,
+  trackTitle, currentTime, duration, onSeek, onPrev, onNext, elevated,
 }: {
   musicOn: boolean
   onToggle: () => void
@@ -788,6 +788,7 @@ function MusicControls({
   onSeek: (t: number) => void
   onPrev: () => void
   onNext: () => void
+  elevated?: boolean
 }) {
   const fill = `${Math.round(volume * 100)}%`
   const dur = Math.max(duration || 0, 0.001)
@@ -819,7 +820,7 @@ function MusicControls({
 
   return (
     <div
-      className="player-pill"
+      className={'player-pill' + (elevated ? ' player-pill-elevated' : '')}
       role="region"
       aria-label="Reproductor de música"
       tabIndex={0}
@@ -1493,8 +1494,19 @@ function SecretDialog({
 }
 
 // ── Main App ──────────────────────────────────────────────────────────────────
+// Próximo regalo según el orden del HUB (GIFT_META); encadena el desbloqueo.
+function nextGiftAfter(id: GiftId): GiftId | null {
+  const i = GIFT_META.findIndex(g => g.id === id)
+  return GIFT_META[i + 1]?.id ?? null
+}
+
 export default function App() {
   const [musicOn,     setMusicOn]     = useState(false)
+  // El reproductor global se muestra solo desde que el regalo de música
+  // (la playlist) se abre por primera vez; nunca reproduce solo.
+  const [musicBarVisible, setMusicBarVisible] = useState(() =>
+    initialSave.completedGifts.includes(3)
+  )
 
   // Playlist efectiva: solo las canciones cuyo archivo de audio existe.
   const [playlistTracks, setPlaylistTracks] = useState<PlaylistTrack[]>([])
@@ -1547,7 +1559,6 @@ export default function App() {
   const lastVolumeRef   = useRef(initialSave.volume > 0 ? initialSave.volume : 0.3)
   const currentTrackRef = useRef(initialSave.pickedTrack)
   const hubRef          = useRef<HTMLDivElement | null>(null)
-  const hasStartedMusicRef = useRef(false)
   const timersRef       = useRef<ReturnType<typeof setTimeout>[]>([])
 
   // Parallax por scroll sin re-renderizar React: escribe solo la variable CSS.
@@ -1630,12 +1641,6 @@ export default function App() {
     }
   }, [playTrack])
 
-  const startMusic = useCallback(() => {
-    if (!audioRef.current || playlistTracks.length === 0) return
-    playTrack(0)
-    setMusicOn(true)
-  }, [playTrack])
-
   const toggleMusic = useCallback(() => {
     const audio = audioRef.current
     if (!audio || playlistTracks.length === 0) return
@@ -1701,8 +1706,15 @@ export default function App() {
   useEffect(() => () => clearAllTimers(), [])
 
   // ── Progreso de los regalos ──
+  // El desbloqueo secuencial sigue el ORDEN del HUB (GIFT_META), no el id.
   const isUnlocked = useCallback(
-    (id: GiftId) => id === 1 || completedGifts[(id - 1) as GiftId],
+    (id: GiftId) => {
+      const i = GIFT_META.findIndex(g => g.id === id)
+      for (let k = 0; k < i; k++) {
+        if (!completedGifts[GIFT_META[k].id]) return false
+      }
+      return true
+    },
     [completedGifts]
   )
 
@@ -1713,19 +1725,20 @@ export default function App() {
 
   const handleOpenGift = useCallback((id: GiftId) => {
     setOpenGift(id)
-    // Inicia la música con el primer regalo abierto (antes lo hacía la intro).
-    if (!hasStartedMusicRef.current) {
-      hasStartedMusicRef.current = true
-      startMusic()
-    }
+    // El reproductor global aparece al abrir el regalo de música (la playlist),
+    // pero la música nunca se reproduce sola: solo con el botón Play.
+    if (id === 3) setMusicBarVisible(true)
     // La playlist desbloquea el siguiente regalo con solo visitarla
     // (además del botón "Hecho ✨" en caso de querer cerrarla antes).
     if (id === 3 && !completedGifts[3]) {
       setCompletedGifts(prev => ({ ...prev, 3: true }))
-      setUnlockedBanner(4)
-      addTimer(() => setUnlockedBanner(null), 3600)
+      const next = nextGiftAfter(id)
+      if (next) {
+        setUnlockedBanner(next)
+        addTimer(() => setUnlockedBanner(null), 3600)
+      }
     }
-  }, [completedGifts, startMusic])
+  }, [completedGifts])
 
   const handlePickTrack = useCallback((i: number) => {
     playTrack(i)
@@ -1733,12 +1746,12 @@ export default function App() {
   }, [playTrack])
 
   // Marca un regalo como completado; `unlockNext` encadena el desbloqueo
-  // del siguiente regalo (el 5 es el último y no tiene siguiente).
+  // del siguiente regalo según el orden del HUB (el último no tiene siguiente).
   const markCompleted = useCallback((id: GiftId, unlockNext: boolean) => {
     setCompletedGifts(prev => ({ ...prev, [id]: true }))
     if (unlockNext) {
-      const next = (id + 1) as GiftId
-      if (next <= 5) {
+      const next = nextGiftAfter(id)
+      if (next) {
         setUnlockedBanner(next)
         addTimer(() => setUnlockedBanner(null), 3600)
       }
@@ -1815,6 +1828,7 @@ export default function App() {
     setSecretBoxOpen(false)
     setUnlockedBanner(null)
     setOpenGift(null)
+    setMusicBarVisible(false)
   }, [])
 
   // ── Persistencia del progreso (con debounce) ──
@@ -1983,19 +1997,22 @@ export default function App() {
         <div className="h-24" />
       </div>
 
-      <MusicControls
-        musicOn={musicOn}
-        onToggle={toggleMusic}
-        onToggleMute={toggleMute}
-        volume={volume}
-        onVolumeChange={handleVolume}
-        trackTitle={playlistTracks[currentTrack]?.title ?? 'Música'}
-        currentTime={currentTime}
-        duration={duration}
-        onSeek={seekTo}
-        onPrev={prevTrack}
-        onNext={nextTrack}
-      />
+      {musicBarVisible && (
+        <MusicControls
+          musicOn={musicOn}
+          onToggle={toggleMusic}
+          onToggleMute={toggleMute}
+          volume={volume}
+          onVolumeChange={handleVolume}
+          trackTitle={playlistTracks[currentTrack]?.title ?? 'Música'}
+          currentTime={currentTime}
+          duration={duration}
+          onSeek={seekTo}
+          onPrev={prevTrack}
+          onNext={nextTrack}
+          elevated={openGift !== null}
+        />
+      )}
 
       {openGift !== null && (
         <GiftShell

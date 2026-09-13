@@ -137,6 +137,12 @@ html, body, #root {
   outline-offset: 4px;
 }
 
+/* Sobre los diálogos de regalo abiertos (el reproductor se muestra al
+   abrir el regalo de música y queda visible después). */
+.player-pill-elevated {
+  z-index: 60;
+}
+
 .player-info {
   display: flex;
   flex-direction: column;
