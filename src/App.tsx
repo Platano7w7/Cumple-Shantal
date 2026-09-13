@@ -1394,12 +1394,6 @@ function GiftPlaceholderBody({
   onQuizFinish: (score: number) => void
 }) {
   if (id === 1) {
-    return <GiftInicios />
-  }
-  if (id === 2) {
-    return <GiftViernes />
-  }
-  if (id === 3) {
     return (
       <GiftPlaylist
         tracks={tracks}
@@ -1408,6 +1402,12 @@ function GiftPlaceholderBody({
         isPlaying={isPlaying}
       />
     )
+  }
+  if (id === 2) {
+    return <GiftViernes />
+  }
+  if (id === 3) {
+    return <GiftInicios />
   }
   if (id === 4) {
     return <GiftCarta />
@@ -1505,7 +1505,7 @@ export default function App() {
   // El reproductor global se muestra solo desde que el regalo de música
   // (la playlist) se abre por primera vez; nunca reproduce solo.
   const [musicBarVisible, setMusicBarVisible] = useState(() =>
-    initialSave.completedGifts.includes(3)
+    initialSave.completedGifts.includes(1)
   )
 
   // Playlist efectiva: solo las canciones cuyo archivo de audio existe.
@@ -1727,11 +1727,11 @@ export default function App() {
     setOpenGift(id)
     // El reproductor global aparece al abrir el regalo de música (la playlist),
     // pero la música nunca se reproduce sola: solo con el botón Play.
-    if (id === 3) setMusicBarVisible(true)
+    if (id === 1) setMusicBarVisible(true)
     // La playlist desbloquea el siguiente regalo con solo visitarla
     // (además del botón "Hecho ✨" en caso de querer cerrarla antes).
-    if (id === 3 && !completedGifts[3]) {
-      setCompletedGifts(prev => ({ ...prev, 3: true }))
+    if (id === 1 && !completedGifts[1]) {
+      setCompletedGifts(prev => ({ ...prev, 1: true }))
       const next = nextGiftAfter(id)
       if (next) {
         setUnlockedBanner(next)

@@ -11,9 +11,9 @@ export interface GiftMeta {
 }
 
 export const GIFT_META: GiftMeta[] = [
-  { id: 3, emoji: '🎵', title: 'Playlist para Shantal', tagline: 'Elige la canción o déjala fluir.' },
+  { id: 1, emoji: '🎵', title: 'Playlist para Shantal', tagline: 'Elige la canción o déjala fluir.' },
   { id: 2, emoji: '📒', title: 'Los viernes', tagline: 'Notas y polaroids de nuestros viernes.' },
-  { id: 1, emoji: '🎮', title: 'Los inicios', tagline: 'Momentos jugando: cómo empezó la amistad.' },
+  { id: 3, emoji: '🎮', title: 'Los inicios', tagline: 'Momentos jugando: cómo empezó la amistad.' },
   { id: 4, emoji: '💌', title: 'Carta de cumpleaños', tagline: 'Una carta muy especial para ti.' },
   { id: 5, emoji: '🧠', title: 'Examen de amistad', tagline: '5 preguntas · 20 puntos. ¿Cuánto me conoces?' },
 ]
