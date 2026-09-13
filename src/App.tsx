@@ -1255,12 +1255,13 @@ function GiftCarta() {
   )
 }
 
-// ── G5: Examen de amistad (experiencia interactiva tipo juego) ────────────────
+// ── G4: Examen de amistad (experiencia interactiva tipo juego) ────────────────
 function GiftQuiz({
-  bestScore, onFinish,
+  bestScore, onFinish, completed = false,
 }: {
   bestScore: number
   onFinish: (score: number) => void
+  completed?: boolean
 }) {
   const [step, setStep] = useState(0)
   const [selected, setSelected] = useState<number[]>(() => Array(QUIZ_QUESTIONS.length).fill(-1))
@@ -1307,16 +1308,27 @@ function GiftQuiz({
     }
   }
 
-  const handleRetry = () => {
-    setStep(0)
-    setSelected(Array(QUIZ_QUESTIONS.length).fill(-1))
-    setRevealed(false)
-    setDone(false)
-    setFinalScore(0)
-    firedRef.current = false
-  }
-
   const isCorrectSel = Boolean(q.allCorrect) || (q.correct !== null && answered === q.correct)
+
+  if (completed) {
+    const result: QuizResult = QUIZ_RESULTS.find(r => bestScore >= r.min) ?? QUIZ_RESULTS[QUIZ_RESULTS.length - 1]
+    return (
+      <div className="quiz-result" style={{ animation: 'fadeInUp 0.6s both' }}>
+        <p className="quiz-step">✅ Examen completado</p>
+        <div className="quiz-score">
+          <span className="quiz-score-num">{bestScore}</span>
+          <span className="quiz-score-total">/ {QUIZ_TOTAL} pts</span>
+        </div>
+        <h3 className="quiz-result-title">{result.title}</h3>
+        <p className="quiz-result-message">{result.message}</p>
+        {bestScore >= SECRET_GIFT_MIN_SCORE && (
+          <p className="quiz-secret-hint" style={{ animation: 'giftPopIn 0.7s 0.3s both' }}>
+            Ya desbloqueaste la carta final 💌
+          </p>
+        )}
+      </div>
+    )
+  }
 
   if (done) {
     const result: QuizResult = QUIZ_RESULTS.find(r => finalScore >= r.min) ?? QUIZ_RESULTS[QUIZ_RESULTS.length - 1]
@@ -1336,11 +1348,6 @@ function GiftQuiz({
         <p className="quiz-best">
           Mejor puntaje general: {Math.max(bestScore, finalScore)}/{QUIZ_TOTAL} 🏆
         </p>
-        <div className="quiz-next-row">
-          <button type="button" onClick={handleRetry} className="gift-cta-ghost">
-            🔄 Reintentar examen
-          </button>
-        </div>
       </div>
     )
   }
@@ -1414,6 +1421,7 @@ function GiftQuiz({
 // ── Cuerpo del regalo (Fase 1: contenido de ejemplo) ─────────────────────────
 function GiftPlaceholderBody({
   id, tracks, onPickTrack, activeTrack, isPlaying, quizBest, onQuizFinish,
+  quizCompleted = false,
   youtubeQuery, youtubeVideo, onYouTubeQueryChange, onSelectVideo, onClearVideo,
 }: {
   id: GiftId
@@ -1423,6 +1431,7 @@ function GiftPlaceholderBody({
   isPlaying: boolean
   quizBest: number
   onQuizFinish: (score: number) => void
+  quizCompleted?: boolean
   youtubeQuery: string
   youtubeVideo: YoutubeVideo | null
   onYouTubeQueryChange: (q: string) => void
@@ -1451,7 +1460,7 @@ function GiftPlaceholderBody({
     return <GiftInicios />
   }
   if (id === 4) {
-    return <GiftQuiz bestScore={quizBest} onFinish={onQuizFinish} />
+    return <GiftQuiz bestScore={quizBest} onFinish={onQuizFinish} completed={quizCompleted} />
   }
   return null
 }
@@ -2039,6 +2048,7 @@ export default function App() {
           isPlaying={musicOn}
           quizBest={quizBest}
           onQuizFinish={handleQuizFinish}
+          quizCompleted={completedGifts[4]}
           youtubeQuery={youtubeQuery}
           youtubeVideo={youtubeVideo}
           onYouTubeQueryChange={setYoutubeQuery}
