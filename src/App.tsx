@@ -773,6 +773,12 @@ function formatTime(seconds: number): string {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 }
 
+// ── Tamaño del reproductor global de música ─────────────────────────────────
+// Única fuente de verdad para el tamaño del reproductor global.
+// Edita aquí para cambiar su tamaño; el ancho se limita al 92% del viewport.
+const MUSIC_PLAYER_WIDTH = 460  // px
+const MUSIC_PLAYER_HEIGHT = 140 // px (altura mínima)
+
 function MusicControls({
   musicOn, onToggle, onToggleMute, volume, onVolumeChange,
   trackTitle, currentTime, duration, onSeek, onPrev, onNext, elevated,
@@ -821,6 +827,10 @@ function MusicControls({
   return (
     <div
       className={'player-pill' + (elevated ? ' player-pill-elevated' : '')}
+      style={{
+        width: `min(${MUSIC_PLAYER_WIDTH}px, 92vw)`,
+        minHeight: `${MUSIC_PLAYER_HEIGHT}px`,
+      }}
       role="region"
       aria-label="Reproductor de música"
       tabIndex={0}
@@ -1520,11 +1530,9 @@ function nextGiftAfter(id: GiftId): GiftId | null {
 
 export default function App() {
   const [musicOn,     setMusicOn]     = useState(false)
-  // El reproductor global se muestra solo desde que el regalo de música
-  // (la playlist) se abre por primera vez; nunca reproduce solo.
-  const [musicBarVisible, setMusicBarVisible] = useState(() =>
-    initialSave.completedGifts.includes(1)
-  )
+  // Se vuelve true en cuanto se elige una canción local; mantiene visible el
+  // reproductor aunque esté pausada (para pausar/reanudar sin reabrir Regalo 1).
+  const [localTrackSelected, setLocalTrackSelected] = useState(false)
 
   // Video de YouTube seleccionado en el Regalo 1. Vive aquí (a nivel global)
   // para que el reproductor siga sonando aunque se cierre el regalo.
@@ -1609,6 +1617,7 @@ export default function App() {
     const n = ((index % playlistTracks.length) + playlistTracks.length) % playlistTracks.length
     const track = playlistTracks[n]
     if (!track) return
+    setLocalTrackSelected(true)
     currentTrackRef.current = n
     setCurrentTrack(n)
     setCurrentTime(0)
@@ -1748,9 +1757,6 @@ export default function App() {
 
   const handleOpenGift = useCallback((id: GiftId) => {
     setOpenGift(id)
-    // El reproductor global aparece al abrir el regalo de música (la playlist),
-    // pero la música nunca se reproduce sola: solo con el botón Play.
-    if (id === 1) setMusicBarVisible(true)
     // La playlist desbloquea el siguiente regalo con solo visitarla
     // (además del botón "Hecho ✨" en caso de querer cerrarla antes).
     if (id === 1 && !completedGifts[1]) {
@@ -1851,9 +1857,9 @@ export default function App() {
     setSecretBoxOpen(false)
     setUnlockedBanner(null)
     setOpenGift(null)
-    setMusicBarVisible(false)
     setYoutubeVideo(null)
     setYoutubeQuery('')
+    setLocalTrackSelected(false)
   }, [])
 
   // ── Persistencia del progreso (con debounce) ──
@@ -2024,7 +2030,7 @@ export default function App() {
         <div className="h-24" />
       </div>
 
-      {musicBarVisible && (
+      {localTrackSelected && !youtubeVideo && (
         <MusicControls
           musicOn={musicOn}
           onToggle={toggleMusic}

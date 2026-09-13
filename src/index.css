@@ -291,8 +291,8 @@ html, body, #root {
 .volume-slider {
   -webkit-appearance: none;
   appearance: none;
-  width: clamp(90px, 16vw, 120px);
-  height: 4px;
+  width: clamp(130px, 20vw, 200px);
+  height: 8px;
   border-radius: 9999px;
   background: linear-gradient(90deg, #ff2d78 var(--fill, 30%), rgba(255, 255, 255, 0.14) var(--fill, 30%));
   outline: none;
@@ -301,16 +301,16 @@ html, body, #root {
 .volume-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 14px;
-  height: 14px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   background: radial-gradient(circle at 35% 35%, #ff6ba8, #ff2d78);
   border: 1px solid #ff6ba8;
   box-shadow: 0 0 10px #ff2d78, 0 0 20px #ff2d7866;
 }
 .volume-slider::-moz-range-thumb {
-  width: 14px;
-  height: 14px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   background: radial-gradient(circle at 35% 35%, #ff6ba8, #ff2d78);
   border: 1px solid #ff6ba8;
