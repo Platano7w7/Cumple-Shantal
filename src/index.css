@@ -392,3 +392,1102 @@ button:focus-visible {
   outline: 2px solid #ff6ba8;
   outline-offset: 3px;
 }
+
+/* ── Hub: regalos ──────────────────────────────────────────────────────────── */
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%      { transform: translateX(-9px) rotate(-2deg); }
+  40%      { transform: translateX(9px) rotate(2deg); }
+  60%      { transform: translateX(-6px) rotate(1deg); }
+  80%      { transform: translateX(6px) rotate(-1deg); }
+}
+
+@keyframes giftUnlockBanner {
+  0%   { transform: translate(-50%, -70px) scale(0.92); opacity: 0; }
+  16%  { transform: translate(-50%, 0) scale(1.02); opacity: 1; }
+  82%  { transform: translate(-50%, 0) scale(1); opacity: 1; }
+  100% { transform: translate(-50%, -26px) scale(0.98); opacity: 0; }
+}
+
+@keyframes giftPopIn {
+  0%   { transform: scale(0.4); opacity: 0; }
+  70%  { transform: scale(1.06); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.gifts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 18px;
+  width: 100%;
+  max-width: 980px;
+  justify-content: center;
+}
+
+.gift-slot {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 24px 18px 18px;
+  border-radius: 22px;
+  text-align: center;
+  background: linear-gradient(160deg, rgba(26, 0, 21, 0.94), rgba(10, 0, 8, 0.9));
+  border: 1px solid #ff2d7866;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 0 22px #ff2d7826, 0 0 44px #ff2d7811;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+.gift-slot:hover { transform: translateY(-6px) scale(1.02); }
+.gift-slot:focus-visible { outline: 2px solid #ff6ba8; outline-offset: 4px; }
+
+.gift-slot.is-shaking {
+  animation: shake 0.5s ease;
+  box-shadow: 0 0 30px #ff005566;
+}
+
+.gift-emoji {
+  font-size: 46px;
+  line-height: 1;
+  filter: drop-shadow(0 0 14px #ff2d7866);
+}
+
+.gift-indicator {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 30px;
+  height: 30px;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  background: rgba(255, 45, 120, 0.12);
+  border: 1px solid #ff2d7866;
+}
+
+.gift-title {
+  font-family: 'Cinzel', serif;
+  color: #ff6ba8;
+  font-size: 17px;
+  font-weight: 600;
+  text-shadow: 0 0 12px #ff2d7888;
+}
+
+.gift-tagline {
+  font-family: 'Poppins', sans-serif;
+  color: #e8a0c0;
+  font-size: 12.5px;
+  font-weight: 300;
+  line-height: 1.5;
+}
+
+.gift-status {
+  margin-top: 6px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: #ff6ba8;
+}
+
+.gift-slot.is-unlocked {
+  border-color: #ff2d7899;
+  box-shadow: 0 0 30px #ff2d7844, 0 0 60px #ff2d7822, inset 0 0 20px #ff2d7808;
+}
+.gift-slot.is-unlocked .gift-emoji { animation: giftBounce 3s ease-in-out infinite; }
+
+.gift-slot.is-completed {
+  border-color: #ff2d78;
+  box-shadow: 0 0 26px #ff2d7833, 0 0 50px #ff2d7815;
+}
+.gift-slot.is-completed .gift-status { color: #ffb3d1; }
+
+.gift-slot.is-locked {
+  cursor: not-allowed;
+  opacity: 0.55;
+  filter: grayscale(0.35);
+}
+
+.hub-heading {
+  font-family: 'Cinzel', serif;
+  color: #ff6ba8;
+  font-size: clamp(20px, 4vw, 30px);
+  font-weight: 600;
+  text-shadow: 0 0 20px #ff2d7888;
+  animation: glowText 3s ease-in-out infinite;
+}
+
+.hub-progress {
+  font-family: 'Poppins', sans-serif;
+  color: #e8a0c0;
+  font-size: 13.5px;
+  font-weight: 300;
+  margin-top: 8px;
+  letter-spacing: 0.04em;
+}
+
+.hub-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  justify-content: center;
+}
+
+.gift-cta-primary {
+  padding: 10px 26px;
+  border-radius: 9999px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: #fff;
+  background: linear-gradient(135deg, #ff2d78, #ff0055);
+  border: none;
+  box-shadow: 0 0 20px #ff2d7866;
+  cursor: pointer;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.gift-cta-primary:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 30px #ff2d78aa;
+}
+
+.gift-cta-ghost {
+  padding: 10px 22px;
+  border-radius: 9999px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  color: #ff6ba8;
+  background: transparent;
+  border: 1px solid #ff2d7866;
+  box-shadow: 0 0 15px #ff2d7833;
+  cursor: pointer;
+  transition: transform 0.3s ease, background 0.3s ease;
+}
+.gift-cta-ghost:hover {
+  transform: scale(1.04);
+  background: rgba(255, 45, 120, 0.1);
+}
+
+.gift-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: linear-gradient(150deg, rgba(26, 0, 21, 0.6), rgba(10, 0, 8, 0.55));
+  border: 1px solid #ff2d7833;
+}
+
+.gift-note-title {
+  font-family: 'Cinzel', serif;
+  color: #ff6ba8;
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  text-shadow: 0 0 10px #ff2d7844;
+}
+
+.gift-note-text {
+  font-family: 'Poppins', sans-serif;
+  color: #e8a0c0;
+  font-size: 13.5px;
+  font-weight: 300;
+  line-height: 1.6;
+}
+
+.gift-hint {
+  opacity: 0.75;
+  font-size: 12.5px;
+}
+
+/* ── Experiencias de regalo (G1 inicios / G2 viernes) ─────────────────────── */
+.gift-opening,
+.gift-closing {
+  font-family: 'Poppins', sans-serif;
+  font-size: 14.5px;
+  font-weight: 300;
+  line-height: 1.8;
+  text-align: center;
+  letter-spacing: 0.02em;
+  color: #ffd9e8;
+  text-shadow: 0 0 12px #ff2d7855;
+  margin-bottom: 22px;
+}
+
+.gift-closing {
+  margin: 24px 0 0;
+  color: #ffb3d1;
+  text-shadow: 0 0 14px #ff2d7877;
+}
+
+/* Timeline del comienzo de la amistad */
+.memory-timeline {
+  position: relative;
+}
+.memory-timeline::before {
+  content: '';
+  position: absolute;
+  left: 11px;
+  top: 10px;
+  bottom: 10px;
+  width: 2px;
+  background: linear-gradient(180deg, transparent, #ff2d7866 12%, #ff2d7866 88%, transparent);
+  box-shadow: 0 0 8px #ff2d7844;
+}
+
+.memory-entry {
+  position: relative;
+  margin-bottom: 18px;
+  padding-left: 34px;
+}
+
+.memory-dot {
+  position: absolute;
+  left: 0;
+  top: 14px;
+  width: 24px;
+  height: 24px;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Cinzel', serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: #ff6ba8;
+  background: radial-gradient(circle at 35% 35%, #1a0015, #0d000a);
+  border: 2px solid #ff2d7899;
+  box-shadow: 0 0 14px #ff2d7855;
+}
+
+/* Notas de los viernes (estilo carta/íntimo) */
+.friday-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.friday-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: linear-gradient(150deg, rgba(26, 0, 21, 0.7), rgba(10, 0, 8, 0.65));
+  border: 1px solid #ff2d7833;
+  box-shadow: 0 0 16px #ff2d7814;
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+.friday-note:hover {
+  transform: translateY(-3px);
+  border-color: #ff2d7866;
+  box-shadow: 0 0 22px #ff2d7822;
+}
+
+.friday-note-emoji {
+  font-size: 26px;
+  line-height: 1.2;
+  filter: drop-shadow(0 0 10px #ff2d7844);
+  flex-shrink: 0;
+}
+
+.friday-note-body {
+  flex: 1;
+}
+
+.friday-note-title {
+  font-family: 'Cinzel', serif;
+  color: #ff6ba8;
+  font-size: 15.5px;
+  font-weight: 600;
+  margin-bottom: 5px;
+  text-shadow: 0 0 10px #ff2d7844;
+}
+
+.friday-note-text {
+  font-family: 'Poppins', sans-serif;
+  color: #e8a0c0;
+  font-size: 14px;
+  font-weight: 300;
+  line-height: 1.65;
+}
+
+.friday-note-sign {
+  margin-top: 8px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  font-style: italic;
+  color: #ff6ba8;
+  letter-spacing: 0.03em;
+}
+
+.gift-unlock-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+}
+
+.gift-banner {
+  position: fixed;
+  top: 26px;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 24px;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #ff2d78, #ff0055);
+  color: #fff;
+  box-shadow: 0 0 34px #ff2d78aa, 0 0 70px #ff2d7844;
+  animation: giftUnlockBanner 3.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  z-index: 41;
+}
+
+.gift-banner-title {
+  font-family: 'Poppins', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-align: left;
+}
+
+.gift-banner-meta {
+  font-family: 'Poppins', sans-serif;
+  font-size: 12px;
+  font-weight: 300;
+  opacity: 0.92;
+  margin-top: 2px;
+  text-align: left;
+}
+
+/* ── Mixtape (playlist para Shantal) ───────────────────────────────────────── */
+.mixtape-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 48vh;
+  overflow-y: auto;
+  padding-right: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 45, 120, 0.5) transparent;
+}
+.mixtape-list::-webkit-scrollbar {
+  width: 6px;
+}
+.mixtape-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+.mixtape-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 45, 120, 0.45);
+  border-radius: 9999px;
+}
+
+.mixtape-track {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: linear-gradient(150deg, rgba(26, 0, 21, 0.7), rgba(10, 0, 8, 0.65));
+  border: 1px solid #ff2d7833;
+  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}
+.mixtape-track:hover {
+  transform: translateX(4px);
+  border-color: #ff2d7866;
+}
+.mixtape-track.is-active {
+  background: linear-gradient(150deg, rgba(42, 0, 32, 0.82), rgba(16, 0, 12, 0.75));
+  border-color: #ff2d78aa;
+  box-shadow: 0 0 18px #ff2d7826, inset 0 0 18px #ff2d7808;
+}
+
+.mixtape-badge {
+  width: 30px;
+  height: 30px;
+  border-radius: 9999px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Cinzel', serif;
+  font-size: 12px;
+  font-weight: 700;
+  color: #ff6ba8;
+  border: 1px solid #ff2d784d;
+  background: rgba(255, 45, 120, 0.08);
+  text-shadow: 0 0 8px #ff2d7855;
+}
+
+.mixtape-eq {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  width: 13px;
+  height: 13px;
+}
+.mixtape-eq i {
+  width: 3px;
+  min-height: 3px;
+  border-radius: 1px;
+  background: #ff2d78;
+  box-shadow: 0 0 6px #ff2d78;
+  animation: twinkle 0.9s ease-in-out infinite;
+}
+.mixtape-eq i:nth-child(1) { height: 60%; }
+.mixtape-eq i:nth-child(2) { height: 100%; animation-delay: 0.2s; }
+.mixtape-eq i:nth-child(3) { height: 75%; animation-delay: 0.45s; }
+
+.mixtape-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.mixtape-title {
+  font-family: 'Poppins', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: #ffd9e8;
+  text-shadow: 0 0 8px #ff2d7855;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mixtape-note {
+  font-family: 'Poppins', sans-serif;
+  font-size: 11.5px;
+  font-weight: 300;
+  font-style: italic;
+  color: #ff6ba8;
+  opacity: 0.85;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mixtape-now {
+  flex-shrink: 0;
+  font-family: 'Poppins', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  color: #ffd9e8;
+  padding: 5px 11px;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #ff2d78, #ff0055);
+  box-shadow: 0 0 14px #ff2d7866;
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.mixtape-play {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: #ffd9e8;
+  border: 1px solid #ff2d7866;
+  background: rgba(255, 45, 120, 0.12);
+  cursor: pointer;
+  transition: transform 0.25s ease, background 0.25s ease;
+}
+.mixtape-play:hover {
+  transform: scale(1.12);
+  background: rgba(255, 45, 120, 0.25);
+}
+.mixtape-play:focus-visible {
+  outline: 2px solid #ff6ba8;
+  outline-offset: 3px;
+}
+
+/* ── Carta de cumpleaños ───────────────────────────────────────────────────── */
+.letter-block {
+  font-family: 'Poppins', sans-serif;
+  font-size: 15px;
+  font-weight: 300;
+  line-height: 2;
+  letter-spacing: 0.02em;
+  color: #e8a0c0;
+  padding: 6px 0;
+}
+
+.letter-block-saludo {
+  font-family: 'Cinzel', serif;
+  font-size: 19px;
+  font-weight: 600;
+  color: #ff6ba8;
+  text-shadow: 0 0 16px #ff2d7877;
+  margin-bottom: 6px;
+}
+
+.letter-block-sign {
+  text-align: center;
+  font-size: 30px;
+  margin-top: 10px;
+  filter: drop-shadow(0 0 14px #ff2d78);
+  animation: float 3s ease-in-out infinite;
+}
+
+.letter-section {
+  margin: 6px 0;
+}
+
+/* Mensaje de Gordo Lui: se separa visualmente como una voz propia, sin romper
+   la identidad (mismo glassmorphism, mismo rosa y negro). */
+.letter-section-gordo {
+  margin: 18px 0;
+  padding: 14px 18px;
+  border-radius: 20px;
+  background: linear-gradient(150deg, rgba(26, 0, 21, 0.65), rgba(10, 0, 8, 0.6));
+  border: 1px solid #ff2d7866;
+  box-shadow: 0 0 24px #ff2d781a, inset 0 0 24px #ff2d7808;
+}
+
+.letter-section-label {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin: -6px 0 12px;
+  font-family: 'Cinzel', serif;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: #ff6ba8;
+  text-shadow: 0 0 10px #ff2d7888;
+}
+
+.letter-block-gordo {
+  font-style: italic;
+  color: #ffd9e8;
+  text-shadow: 0 0 10px #ff2d7855;
+}
+
+.letter-block-despedida {
+  text-align: center;
+  font-size: 15.5px;
+  letter-spacing: 0.06em;
+  color: #ffd9e8;
+  text-shadow: 0 0 12px #ff2d7877;
+  margin-top: 10px;
+}
+
+.carta-bridge {
+  margin-top: 28px;
+  text-align: center;
+}
+
+.carta-divider {
+  display: block;
+  font-family: 'Poppins', sans-serif;
+  font-size: 13px;
+  letter-spacing: 0.35em;
+  color: #ff6ba8;
+  text-shadow: 0 0 10px #ff2d7888;
+  margin-bottom: 16px;
+}
+
+.carta-bridge-text {
+  font-family: 'Poppins', sans-serif;
+  font-size: 14px;
+  font-weight: 300;
+  font-style: italic;
+  line-height: 1.9;
+  color: #ffd9e8;
+  text-shadow: 0 0 12px #ff2d7855;
+}
+
+/* ── G5: Examen de amistad ──────────────────────────────────────────────────── */
+.quiz-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.quiz-progress-bar {
+  width: 100%;
+  height: 6px;
+  border-radius: 9999px;
+  background: rgba(255, 45, 120, 0.14);
+  overflow: hidden;
+}
+
+.quiz-progress-fill {
+  height: 100%;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, #ff2d78, #ff6ba8, #ff2d78);
+  background-size: 200% auto;
+  animation: shimmer 3s linear infinite;
+  box-shadow: 0 0 8px #ff2d78aa;
+  transition: width 0.4s ease;
+}
+
+.quiz-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.quiz-step {
+  font-family: 'Cinzel', serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: #ff6ba8;
+  text-shadow: 0 0 10px #ff2d7888;
+}
+
+.quiz-pick {
+  font-family: 'Poppins', sans-serif;
+  font-size: 11.5px;
+  font-weight: 300;
+  letter-spacing: 0.04em;
+  color: #e8a0c0;
+}
+
+.quiz-card {
+  padding: 18px 16px;
+  border-radius: 20px;
+  background: linear-gradient(150deg, rgba(26, 0, 21, 0.72), rgba(10, 0, 8, 0.68));
+  border: 1px solid #ff2d7833;
+  box-shadow: 0 0 26px #ff2d7814, inset 0 0 26px #ff2d7806;
+}
+
+.quiz-prompt {
+  font-family: 'Poppins', sans-serif;
+  font-size: 15px;
+  font-weight: 400;
+  color: #ffe4ef;
+  text-shadow: 0 0 10px #ff2d7844;
+  margin-bottom: 14px;
+  text-align: center;
+}
+
+.quiz-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.quiz-option {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 14px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 13.5px;
+  font-weight: 300;
+  color: #e8a0c0;
+  background: linear-gradient(150deg, rgba(255, 45, 120, 0.08), rgba(255, 45, 120, 0.02));
+  border: 1px solid #ff2d7833;
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease, color 0.2s ease;
+  text-align: left;
+}
+
+.quiz-option:hover:not(:disabled) {
+  transform: translateX(4px);
+  border-color: #ff2d78aa;
+  box-shadow: 0 0 14px #ff2d7844;
+  color: #fff;
+}
+
+.quiz-option-chosen {
+  border-color: #ff2d78;
+  color: #fff;
+  box-shadow: 0 0 16px #ff2d7866;
+}
+
+.quiz-option-correct {
+  border-color: #ff2d78;
+  color: #fff;
+  background: linear-gradient(150deg, rgba(255, 45, 120, 0.22), rgba(255, 45, 120, 0.1));
+  box-shadow: 0 0 18px #ff2d7888;
+}
+
+.quiz-option-correct::after {
+  content: ' ✓';
+  color: #ff6ba8;
+}
+
+.quiz-option-wrong {
+  border-color: #ff2d7833;
+  color: #8a5a6b;
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+  opacity: 0.85;
+}
+
+.quiz-option-dim {
+  opacity: 0.45;
+}
+
+.quiz-feedback {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: linear-gradient(150deg, rgba(26, 0, 21, 0.85), rgba(10, 0, 8, 0.8));
+  border: 1px solid #ff2d7866;
+  box-shadow: 0 0 20px #ff2d781a;
+  text-align: left;
+}
+
+.quiz-feedback-icon {
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.quiz-feedback-text {
+  font-family: 'Poppins', sans-serif;
+  font-size: 13px;
+  font-weight: 300;
+  font-style: italic;
+  color: #ffd9e8;
+  text-shadow: 0 0 10px #ff2d7855;
+  line-height: 1.55;
+}
+
+.quiz-feedback-pts {
+  margin-top: 4px;
+  font-family: 'Cinzel', serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: #ff6ba8;
+  text-shadow: 0 0 10px #ff2d7888;
+}
+
+.quiz-next-row {
+  display: flex;
+  justify-content: center;
+}
+
+.quiz-result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  text-align: center;
+  padding: 10px 0 4px;
+}
+
+.quiz-score {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.quiz-score-num {
+  font-family: 'Cinzel', serif;
+  font-size: 56px;
+  font-weight: 900;
+  background: linear-gradient(135deg, #ffffff, #ff6ba8, #ff2d78);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 3s linear infinite;
+  line-height: 1;
+  filter: drop-shadow(0 0 18px #ff2d7866);
+}
+
+.quiz-score-total {
+  font-family: 'Poppins', sans-serif;
+  font-size: 15px;
+  font-weight: 300;
+  color: #e8a0c0;
+}
+
+.quiz-result-title {
+  font-family: 'Cinzel', serif;
+  font-size: 20px;
+  font-weight: 600;
+  color: #ff6ba8;
+  text-shadow: 0 0 18px #ff2d78;
+}
+
+.quiz-result-message {
+  font-family: 'Poppins', sans-serif;
+  font-size: 14px;
+  font-weight: 300;
+  line-height: 1.7;
+  color: #ffd9e8;
+  text-shadow: 0 0 10px #ff2d7855;
+  max-width: 420px;
+}
+
+.quiz-secret-hint {
+  font-family: 'Poppins', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #fff;
+  background: linear-gradient(135deg, #ff2d78, #ff0055);
+  padding: 10px 18px;
+  border-radius: 9999px;
+  box-shadow: 0 0 22px #ff2d78aa;
+}
+
+.quiz-best {
+  font-family: 'Poppins', sans-serif;
+  font-size: 12px;
+  font-weight: 300;
+  color: #e8a0c0;
+  letter-spacing: 0.03em;
+}
+
+/* ── Regalo secreto: carta colgante ────────────────────────────────────────── */
+.secret-hanger {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 32;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+}
+
+.secret-thread {
+  width: 2px;
+  height: 96px;
+  background: linear-gradient(#ff2d7833, #ff6ba8);
+  box-shadow: 0 0 8px #ff2d7866;
+}
+
+.secret-letter {
+  position: relative;
+  width: 76px;
+  height: 60px;
+  border-radius: 10px;
+  background: linear-gradient(#ffffff, #ffd9e8 85%);
+  box-shadow: 0 10px 24px #00000088, 0 0 20px #ff2d7866;
+  cursor: pointer;
+  pointer-events: auto;
+  transform-origin: 50% -96px;
+  animation: secretSwing 3.6s ease-in-out infinite;
+  transition: box-shadow 0.25s ease;
+}
+
+.secret-letter:hover {
+  box-shadow: 0 10px 26px #000000aa, 0 0 30px #ff2d78aa;
+}
+
+.secret-letter::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: linear-gradient(#ffe3ef, #ffb9d6);
+  border-radius: 10px 10px 0 0;
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+
+.secret-letter::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  border: 1px solid #ff2d7826;
+  pointer-events: none;
+}
+
+.secret-seal {
+  position: absolute;
+  top: 52%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ff6ba8, #ff2d78);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: #fff;
+  box-shadow: 0 0 12px #ff2d78cc;
+  z-index: 1;
+  animation: float 3s ease-in-out infinite;
+}
+
+.secret-letter.escaping {
+  animation: secretDodge 1.05s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+}
+
+.secret-hint-label {
+  margin-top: 8px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 10.5px;
+  font-weight: 300;
+  letter-spacing: 0.06em;
+  color: #e8a0c0;
+  text-align: center;
+  text-shadow: 0 0 8px #000;
+  max-width: 210px;
+  line-height: 1.5;
+}
+
+.secret-patience {
+  position: relative;
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  max-width: 280px;
+  background: linear-gradient(150deg, rgba(26, 0, 21, 0.92), rgba(10, 0, 8, 0.9));
+  border: 1px solid #ff2d7866;
+  box-shadow: 0 0 18px #ff2d7822;
+  font-family: 'Poppins', sans-serif;
+  font-size: 12.5px;
+  font-weight: 300;
+  line-height: 1.6;
+  color: #ffd9e8;
+  text-shadow: 0 0 10px #ff2d7855;
+  text-align: center;
+  animation: fadeInUp 0.35s both;
+}
+
+.secret-patience::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  margin-left: -7px;
+  width: 0;
+  height: 0;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-bottom: 8px solid #ff2d7866;
+}
+
+/* ── Regalo secreto: capa del mensaje (aún pendiente) ──────────────────────── */
+.secret-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(5, 0, 13, 0.6);
+  backdrop-filter: blur(6px);
+  animation: fadeIn 0.3s ease;
+}
+
+.secret-card {
+  position: relative;
+  width: min(460px, 100%);
+  border-radius: 28px;
+  padding: 34px 26px 26px;
+  text-align: center;
+  background: linear-gradient(160deg, #1a0015, #0d000a);
+  border: 1px solid #ff2d7866;
+  box-shadow: 0 0 60px #ff2d7855, 0 0 120px #ff2d7822;
+  animation: letterUnfold 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.secret-card-envelope {
+  font-size: 58px;
+  display: inline-block;
+  filter: drop-shadow(0 0 18px #ff2d78);
+  animation: float 2.6s ease-in-out infinite;
+}
+
+.secret-card-title {
+  font-family: 'Cinzel', serif;
+  font-size: 20px;
+  font-weight: 600;
+  color: #ff6ba8;
+  text-shadow: 0 0 18px #ff2d78;
+  margin-top: 14px;
+}
+
+.secret-card-body {
+  font-family: 'Poppins', sans-serif;
+  font-size: 14px;
+  font-weight: 300;
+  line-height: 1.8;
+  color: #ffd9e8;
+  text-shadow: 0 0 10px #ff2d7855;
+  margin-top: 12px;
+}
+
+.secret-card-tag {
+  display: inline-block;
+  margin-top: 16px;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  border: 1px dashed #ff2d7866;
+  color: #e8a0c0;
+  font-family: 'Poppins', sans-serif;
+  font-size: 11px;
+  font-weight: 300;
+  letter-spacing: 0.08em;
+}
+
+@keyframes secretSwing {
+  0%, 100% { transform: rotate(-7deg) translateY(0); }
+  50%      { transform: rotate(7deg) translateY(2px); }
+}
+
+@keyframes secretDodge {
+  0%   { transform: rotate(-4deg) translateX(0) translateY(0); opacity: 1; }
+  18%  { transform: rotate(-26deg) translateX(calc(var(--sway, 1) * 140px)) translateY(30px); opacity: 1; }
+  55%  { transform: rotate(14deg) translateX(calc(var(--sway, 1) * -48px)) translateY(10px); opacity: 0.9; }
+  100% { transform: rotate(-4deg) translateX(0) translateY(0); opacity: 1; }
+}
+
+/* ── Caja de regalo de la intro como botón accesible ───────────────────────── */
+.gift-box-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+.gift-box-btn:disabled {
+  cursor: default;
+}
+.gift-box-btn:focus-visible {
+  outline: 2px solid #ff6ba8;
+  outline-offset: 6px;
+  border-radius: 16px;
+}
+
+/* ── Movimiento reducido: quitar animaciones/transiciones y confeti ────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .confetti-burst > div {
+    display: none;
+  }
+}

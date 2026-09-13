@@ -1,13 +1,44 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 
-// ── Editable content ──────────────────────────────────────────────────────────
-// Añade o elimina canciones aquí. Los archivos deben estar en `public/assets/audio/`.
-interface PlaylistTrack { title: string; file: string }
-const playlist: PlaylistTrack[] = [
-  { title: "Canción 1", file: "assets/audio/cancion1.mp3" },
-  { title: "Canción 2", file: "assets/audio/cancion2.mp3" },
-  { title: "Canción 3", file: "assets/audio/cancion3.mp3" },
-]
+import {
+  FRIDAY_CLOSING,
+  FRIDAY_NOTES,
+  FRIDAY_OPENING,
+  GAME_CLOSING,
+  GAME_MOMENTS,
+  GAME_OPENING,
+  GIFT_META,
+  LETTER_BLOCKS,
+  LETTER_CLOSING,
+  PLAYLIST,
+  PLAYLIST_INTRO,
+  QUIZ_QUESTIONS,
+  QUIZ_RESULTS,
+  QUIZ_TOTAL,
+  SECRET_AVAILABLE_LABEL,
+  SECRET_BANNER_SUB,
+  SECRET_BANNER_TITLE,
+  SECRET_ESCAPING_LABEL,
+  SECRET_GIFT_MIN_SCORE,
+  SECRET_PATIENCE_MSG,
+  SECRET_PLACEHOLDER_BODY,
+  SECRET_PLACEHOLDER_TITLE,
+  SECRET_TIME_ZONE,
+  SECRET_UNLOCK_HOUR,
+  getGiftMeta,
+} from './gift-content'
+import type { GiftId, QuizQuestion, QuizResult } from './gift-content'
+import { loadSave, persistSave, clearSave } from './lib/persistence'
+import type { SaveState } from './lib/persistence'
+import GiftSlot from './components/GiftSlot'
+import GiftShell from './components/GiftShell'
+
+// El contenido editable (canciones, textos, preguntas) vive en `src/gift-content.ts`.
+// Los archivos de audio deben estar en `public/assets/audio/`.
+const playlist = PLAYLIST
+
+// ── Progreso guardado en el navegador ─────────────────────────────────────────
+const initialSave: SaveState = loadSave()
 
 // Resuelve rutas relativas a la base del sitio (funciona con Figma Make y Vite).
 function resolveAudio(file: string): string {
@@ -37,7 +68,7 @@ const floatingMessages = [
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-type Phase     = 'intro' | 'exploding' | 'traveling' | 'main'
+type Phase     = 'intro' | 'exploding' | 'traveling' | 'hub'
 type GiftPhase = 'idle' | 'squish' | 'opening' | 'exploding'
 
 interface Star     { id: number; x: number; y: number; size: number; delay: number; duration: number; zoomDur: number }
@@ -93,10 +124,12 @@ function AnimatedOnScroll({ children, delay = 0 }: { children: React.ReactNode; 
 }
 
 // ── Parallax star layer ───────────────────────────────────────────────────────
+// El desplazamiento llega como variable CSS (--parallax-px, definida en el hub
+// durante el scroll) para NO re-renderizar React en cada evento de scroll.
 function ParallaxStarLayer({
-  count, zooming = false, parallaxY = 0, opacity = 1,
+  count, zooming = false, factor = -0.05, opacity = 1,
 }: {
-  count: number; zooming?: boolean; parallaxY?: number; opacity?: number
+  count: number; zooming?: boolean; factor?: number; opacity?: number
 }) {
   const stars = useStars(count)
   return (
@@ -106,7 +139,8 @@ function ParallaxStarLayer({
         left: 0, right: 0,
         top: '-15%', height: '130%',
         overflow: 'hidden',
-        transform: `translateY(${parallaxY}px)`,
+        transform: `translateY(calc(var(--parallax-px, 0px) * ${factor}))`,
+        transition: 'transform 0.2s ease-out',
         willChange: 'transform',
         opacity,
       }}
@@ -132,20 +166,20 @@ function ParallaxStarLayer({
 
 // ── Star field (two parallax layers) ─────────────────────────────────────────
 function StarField({
-  count = 200, zooming = false, scrollY = 0,
+  count = 200, zooming = false,
 }: {
-  count?: number; zooming?: boolean; scrollY?: number
+  count?: number; zooming?: boolean
 }) {
   return (
     <>
-      <ParallaxStarLayer count={Math.floor(count * 0.6)} zooming={zooming} parallaxY={scrollY * -0.05} opacity={0.7} />
-      <ParallaxStarLayer count={Math.floor(count * 0.4)} zooming={zooming} parallaxY={scrollY * -0.12} opacity={1} />
+      <ParallaxStarLayer count={Math.floor(count * 0.6)} zooming={zooming} factor={-0.05} opacity={0.7} />
+      <ParallaxStarLayer count={Math.floor(count * 0.4)} zooming={zooming} factor={-0.12} opacity={1} />
     </>
   )
 }
 
 // ── Floating particles with scroll parallax ──────────────────────────────────
-function FloatingParticles({ scrollY = 0 }: { scrollY?: number }) {
+function FloatingParticles() {
   const [particles] = useState<Particle[]>(() =>
     Array.from({ length: 40 }, (_, i) => ({
       id: i,
@@ -163,7 +197,7 @@ function FloatingParticles({ scrollY = 0 }: { scrollY?: number }) {
     <div
       className="absolute inset-0 overflow-hidden pointer-events-none"
       style={{
-        transform: `translateY(${scrollY * -0.08}px)`,
+        transform: `translateY(calc(var(--parallax-px, 0px) * -0.08))`,
         willChange: 'transform',
         transition: 'transform 1.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
       }}
@@ -202,7 +236,7 @@ function ConfettiBurst() {
     }))
   )
   return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none z-20">
+    <div className="absolute inset-0 overflow-hidden pointer-events-none z-20 confetti-burst" aria-hidden="true">
       {confetti.map(c => (
         <div
           key={c.id}
@@ -282,7 +316,14 @@ function GiftBox({ onClick, giftPhase }: { onClick: () => void; giftPhase: GiftP
   }
 
   return (
-    <div onClick={giftPhase === 'idle' ? onClick : undefined} style={outerStyle}>
+    <button
+      type="button"
+      className="gift-box-btn"
+      aria-label="Abrir tu regalo de cumpleaños"
+      disabled={giftPhase !== 'idle'}
+      onClick={giftPhase === 'idle' ? onClick : undefined}
+      style={outerStyle}
+    >
       {/* Inner glow when box is open */}
       {(isOpening || isExploding) && (
         <div
@@ -352,7 +393,7 @@ function GiftBox({ onClick, giftPhase }: { onClick: () => void; giftPhase: GiftP
           <circle cx="90" cy="59" r="6"  fill="#ff6ba8"/>
         </g>
       </svg>
-    </div>
+    </button>
   )
 }
 
@@ -536,6 +577,7 @@ const PROTECTED_ZONES: { x: number; y: number; w: number; h: number }[] = [
   { x: 12, y: 58, w: 76, h: 20 },  // título + subtítulo
   { x: 20, y: 82, w: 56, h: 16 },  // botones (mensaje secreto / reinicio)
   { x: 52, y: 84, w: 48, h: 15 },  // controles de música
+  { x: 36, y: 2,  w: 28, h: 22 },  // carta colgante del regalo secreto
 ]
 
 function isProtectedZone(x: number, y: number): boolean {
@@ -716,50 +758,6 @@ function MomentCard({ emoji, title, text }: { emoji: string; title: string; text
   )
 }
 
-// ── Secret Letter ─────────────────────────────────────────────────────────────
-function SecretLetter({ onClose }: { onClose: () => void }) {
-  return (
-    <div
-      className="fixed inset-0 flex items-center justify-center z-50 p-4"
-      style={{ background: 'rgba(0,0,0,0.88)', backdropFilter: 'blur(10px)', animation: 'fadeIn 0.3s ease' }}
-      onClick={onClose}
-    >
-      <div
-        onClick={e => e.stopPropagation()}
-        className="rounded-3xl p-8 max-w-lg w-full relative"
-        style={{
-          background:  'linear-gradient(160deg, #1a0015, #0d000a)',
-          border:      '1px solid #ff2d7866',
-          boxShadow:   '0 0 60px #ff2d7855, 0 0 120px #ff2d7822',
-          animation:   'letterUnfold 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both',
-          maxHeight:   '90vh',
-          overflowY:   'auto',
-        }}
-      >
-        <div className="text-center mb-6">
-          <span style={{ fontSize: 40 }}>💌</span>
-          <h2 style={{ fontFamily: "'Cinzel', serif", color: '#ff6ba8', fontSize: 22, fontWeight: 600, textShadow: '0 0 20px #ff2d78', marginTop: 8 }}>
-            Mensaje secreto
-          </h2>
-          <div style={{ height: 1, background: 'linear-gradient(90deg, transparent, #ff2d7888, transparent)', margin: '12px 0' }}/>
-        </div>
-        <div style={{ fontFamily: "'Poppins', sans-serif", color: '#e8a0c0', fontSize: 15, fontWeight: 300, lineHeight: 2, whiteSpace: 'pre-line' }}>
-          {`Shantal:\n\nEspero que este cumpleaños esté lleno de momentos inolvidables.\n\nGracias por las risas, por las rankeds, por los puzzles, por Roblox y por todos los buenos momentos compartidos.\n\nMe encanta molestarte, aunque seguramente ya lo sabes.\n\nEspero seguir creando nuevos recuerdos contigo y verte cumplir todas las metas que te propongas.\n\nFeliz cumpleaños número 21.\n\n❤️`}
-        </div>
-        <div className="text-center mt-6">
-          <button
-            onClick={onClose}
-            className="px-6 py-2 rounded-full text-sm font-medium transition-all duration-300 hover:scale-105"
-            style={{ background: 'linear-gradient(135deg, #ff2d78, #ff0055)', color: 'white', border: 'none', boxShadow: '0 0 20px #ff2d7866', fontFamily: "'Poppins', sans-serif", cursor: 'pointer' }}
-          >
-            Cerrar ✨
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 // ── Music player (track info + progress + transport + volume) ───────────────
 function formatTime(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) seconds = 0
@@ -898,29 +896,479 @@ function MusicControls({
   )
 }
 
+// ── Regalo 1: Los inicios — recorrido por el comienzo de la amistad ──────────
+function GiftInicios() {
+  return (
+    <div>
+      <p className="gift-opening" style={{ animation: 'fadeInUp 0.6s 0.15s both' }}>
+        {GAME_OPENING}
+      </p>
+
+      <div className="memory-timeline" aria-label="Recorrido por los inicios de la amistad">
+        {GAME_MOMENTS.map((m, i) => (
+          <AnimatedOnScroll key={i} delay={i * 0.08}>
+            <div className="memory-entry">
+              <span className="memory-dot" aria-hidden="true">
+                {i + 1}
+              </span>
+              <MomentCard emoji={m.emoji} title={m.title} text={m.text} delay={0} />
+            </div>
+          </AnimatedOnScroll>
+        ))}
+      </div>
+
+      <p className="gift-closing" style={{ animation: 'fadeInUp 0.7s 0.2s both' }}>
+        {GAME_CLOSING}
+      </p>
+    </div>
+  )
+}
+
+// ── Regalo 2: Los viernes — notas e intimidad de nuestro tiempo juntos ───────
+function GiftViernes() {
+  return (
+    <div>
+      <p className="gift-opening" style={{ animation: 'fadeInUp 0.6s 0.15s both' }}>
+        {FRIDAY_OPENING}
+      </p>
+
+      <div className="friday-notes" aria-label="Notas de nuestros viernes">
+        {FRIDAY_NOTES.map((n, i) => (
+          <AnimatedOnScroll key={i} delay={i * 0.09}>
+            <div className="friday-note">
+              <span className="friday-note-emoji" aria-hidden="true">
+                {n.emoji}
+              </span>
+              <div className="friday-note-body">
+                <h4 className="friday-note-title">{n.title}</h4>
+                <p className="friday-note-text">{n.text}</p>
+                {n.sign && <p className="friday-note-sign">{n.sign}</p>}
+              </div>
+            </div>
+          </AnimatedOnScroll>
+        ))}
+      </div>
+
+      <p className="gift-closing" style={{ animation: 'fadeInUp 0.7s 0.2s both' }}>
+        {FRIDAY_CLOSING}
+      </p>
+    </div>
+  )
+}
+
+// ── Regalo 3: Playlist para Shantal — mixtape con selector de canciones ─────
+function GiftPlaylist({
+  onPickTrack, activeTrack, isPlaying,
+}: {
+  onPickTrack: (i: number) => void
+  activeTrack: number
+  isPlaying: boolean
+}) {
+  const currentIsPlaying = (i: number) => i === activeTrack && isPlaying
+
+  return (
+    <div>
+      <p className="gift-opening" style={{ animation: 'fadeInUp 0.6s 0.15s both' }}>
+        {PLAYLIST_INTRO}
+      </p>
+
+      <div className="mixtape-list" aria-label="Playlist de canciones elegidas para ti">
+        {PLAYLIST.map((t, i) => {
+          const active = i === activeTrack
+          return (
+            <div key={i} className={`mixtape-track${active ? ' is-active' : ''}`}>
+              <span className="mixtape-badge" aria-hidden="true">
+                {currentIsPlaying(i) ? (
+                  <span className="mixtape-eq"><i /><i /><i /></span>
+                ) : (
+                  String(i + 1).padStart(2, '0')
+                )}
+              </span>
+
+              <div className="mixtape-info">
+                <span className="mixtape-title">
+                  {t.emoji} {t.title}
+                </span>
+                {t.note && <span className="mixtape-note">{t.note}</span>}
+              </div>
+
+              {currentIsPlaying(i) ? (
+                <span className="mixtape-now" role="status">💖 Sonando ahora</span>
+              ) : (
+                <button
+                  type="button"
+                  className="mixtape-play"
+                  onClick={() => onPickTrack(i)}
+                  aria-label={`Reproducir ${t.title}`}
+                  title={`Reproducir ${t.title}`}
+                >
+                  ▶
+                </button>
+              )}
+            </div>
+          )
+        })}
+      </div>
+
+      <p className="gift-note-text gift-hint" style={{ marginTop: 14 }}>
+        Esta lista crece contigo: se irán sumando más canciones para ti.
+      </p>
+    </div>
+  )
+}
+
+// ── Regalo 4: Carta de cumpleaños — el capítulo más íntimo ──────────────────
+function GiftCarta() {
+  const styleClass: Record<string, string> = {
+    saludo: 'letter-block-saludo',
+    gordo: 'letter-block-gordo',
+    despedida: 'letter-block-despedida',
+    sign: 'letter-block-sign',
+  }
+
+  return (
+    <div>
+      {LETTER_BLOCKS.map((section, s) => (
+        <div
+          key={s}
+          className={section.style === 'gordo' ? 'letter-section letter-section-gordo' : 'letter-section'}
+        >
+          {section.label && (
+            <div className="letter-section-label" style={{ animation: 'fadeInUp 0.5s both' }}>
+              {section.label}
+            </div>
+          )}
+          {section.paragraphs.map((p, i) => (
+            <AnimatedOnScroll key={i} delay={i * 0.1}>
+              <div className={`letter-block ${styleClass[section.style] ?? ''}`.trim()}>
+                {p}
+              </div>
+            </AnimatedOnScroll>
+          ))}
+        </div>
+      ))}
+
+      <div className="carta-bridge" style={{ animation: 'fadeInUp 0.8s 0.3s both' }}>
+        <span className="carta-divider" aria-hidden="true">✦ ✦ ✦</span>
+        <p className="carta-bridge-text">{LETTER_CLOSING}</p>
+      </div>
+    </div>
+  )
+}
+
+// ── G5: Examen de amistad (experiencia interactiva tipo juego) ────────────────
+function GiftQuiz({
+  bestScore, onFinish,
+}: {
+  bestScore: number
+  onFinish: (score: number) => void
+}) {
+  const [step, setStep] = useState(0)
+  const [selected, setSelected] = useState<number[]>(() => Array(QUIZ_QUESTIONS.length).fill(-1))
+  const [revealed, setRevealed] = useState(false)
+  const [done, setDone] = useState(false)
+  const [finalScore, setFinalScore] = useState(0)
+  const firedRef = useRef(false)
+
+  const q = QUIZ_QUESTIONS[step]
+  const answered = selected[step]
+  const answeredCount = selected.filter(s => s !== -1).length
+
+  const computeScore = (sel: number[]) =>
+    QUIZ_QUESTIONS.reduce(
+      (acc, question, i) => (question.correct !== null && sel[i] === question.correct ? acc + question.points : acc),
+      0
+    )
+
+  const handleAnswer = (opt: number) => {
+    if (revealed) return
+    setSelected(prev => {
+      const next = [...prev]
+      next[step] = opt
+      return next
+    })
+    setRevealed(true)
+  }
+
+  const handleNext = () => {
+    if (step < QUIZ_QUESTIONS.length - 1) {
+      setStep(step + 1)
+      setRevealed(false)
+    } else {
+      const score = computeScore(selected)
+      setFinalScore(score)
+      setDone(true)
+      if (!firedRef.current) {
+        firedRef.current = true
+        onFinish(score)
+      }
+    }
+  }
+
+  const handleRetry = () => {
+    setStep(0)
+    setSelected(Array(QUIZ_QUESTIONS.length).fill(-1))
+    setRevealed(false)
+    setDone(false)
+    setFinalScore(0)
+    firedRef.current = false
+  }
+
+  const isCorrectSel = q.correct !== null && answered === q.correct
+
+  if (done) {
+    const result: QuizResult = QUIZ_RESULTS.find(r => finalScore >= r.min) ?? QUIZ_RESULTS[QUIZ_RESULTS.length - 1]
+    return (
+      <div className="quiz-result" style={{ animation: 'fadeInUp 0.6s both' }}>
+        <div className="quiz-score">
+          <span className="quiz-score-num">{finalScore}</span>
+          <span className="quiz-score-total">/ {QUIZ_TOTAL} pts</span>
+        </div>
+        <h3 className="quiz-result-title">{result.title}</h3>
+        <p className="quiz-result-message">{result.message}</p>
+        {finalScore >= SECRET_GIFT_MIN_SCORE && (
+          <p className="quiz-secret-hint" style={{ animation: 'giftPopIn 0.7s 0.3s both' }}>
+            🎁 Has desbloqueado un regalo secreto
+          </p>
+        )}
+        <p className="quiz-best">
+          Mejor puntaje general: {Math.max(bestScore, finalScore)}/{QUIZ_TOTAL} 🏆
+        </p>
+        <div className="quiz-next-row">
+          <button type="button" onClick={handleRetry} className="gift-cta-ghost">
+            🔄 Reintentar examen
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="quiz-wrap">
+      <div className="quiz-progress-bar">
+        <div
+          className="quiz-progress-fill"
+          style={{ width: `${(answeredCount / QUIZ_QUESTIONS.length) * 100}%` }}
+        />
+      </div>
+      <div className="quiz-top">
+        <span className="quiz-step">Pregunta {step + 1} de {QUIZ_QUESTIONS.length}</span>
+        <span className="quiz-pick">{answeredCount} respondidas · {step + 1 === QUIZ_QUESTIONS.length ? 'es la última' : `faltan ${QUIZ_QUESTIONS.length - 1 - step}`}</span>
+      </div>
+
+      <div className="quiz-card">
+        <p className="quiz-prompt">{q.prompt}</p>
+        <div className="quiz-options">
+          {q.options.map((opt, i) => {
+            const chosen = answered === i
+            return (
+              <button
+                key={i}
+                type="button"
+                className={[
+                  'quiz-option',
+                  chosen && !revealed ? 'quiz-option-chosen' : '',
+                  revealed && i === q.correct ? 'quiz-option-correct' : '',
+                  revealed && chosen && i !== q.correct ? 'quiz-option-wrong' : '',
+                  revealed && !chosen ? 'quiz-option-dim' : '',
+                ].filter(Boolean).join(' ')}
+                onClick={() => handleAnswer(i)}
+                disabled={revealed}
+              >
+                {opt.label}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {revealed && (
+        <div className="quiz-feedback" style={{ animation: 'fadeInUp 0.4s both' }} role="status" aria-live="polite">
+          <span className="quiz-feedback-icon">{q.correct === null ? '💬' : isCorrectSel ? '🎉' : '😅'}</span>
+          <div>
+            <p className="quiz-feedback-text">
+              {q.options[answered]?.feedback ?? (isCorrectSel ? '¡Correcto!' : 'No era esa…')}
+            </p>
+            {q.correct !== null && (
+              <p className="quiz-feedback-pts">
+                {answered === q.correct ? `+${q.points} pts` : '0 pts'}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {revealed && (
+        <div className="quiz-next-row">
+          <button type="button" onClick={handleNext} className="gift-cta-ghost">
+            {step === QUIZ_QUESTIONS.length - 1 ? 'Ver resultado 🧠' : 'Siguiente →'}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Cuerpo del regalo (Fase 1: contenido de ejemplo) ─────────────────────────
+function GiftPlaceholderBody({
+  id, onPickTrack, activeTrack, isPlaying, quizBest, onQuizFinish,
+}: {
+  id: GiftId
+  onPickTrack?: (i: number) => void
+  activeTrack: number
+  isPlaying: boolean
+  quizBest: number
+  onQuizFinish: (score: number) => void
+}) {
+  if (id === 1) {
+    return <GiftInicios />
+  }
+  if (id === 2) {
+    return <GiftViernes />
+  }
+  if (id === 3) {
+    return (
+      <GiftPlaylist
+        onPickTrack={onPickTrack ?? (() => {})}
+        activeTrack={activeTrack}
+        isPlaying={isPlaying}
+      />
+    )
+  }
+  if (id === 4) {
+    return <GiftCarta />
+  }
+  return <GiftQuiz bestScore={quizBest} onFinish={onQuizFinish} />
+}
+
+// ── Diálogo del regalo secreto con trampa de foco y cierre con Escape ────────
+function SecretDialog({
+  onClose,
+}: {
+  onClose: () => void
+}) {
+  const panelRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null
+    const panel = panelRef.current
+    const first = panel?.querySelector<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    )
+    if (panel && first) first.focus()
+    return () => previous?.focus()
+  }, [])
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Escape') {
+      onClose()
+      return
+    }
+    if (e.key !== 'Tab') return
+    const panel = panelRef.current
+    if (!panel) return
+    const focusable = Array.from(
+      panel.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      )
+    )
+    if (focusable.length === 0) {
+      e.preventDefault()
+      return
+    }
+    const first = focusable[0]
+    const last = focusable[focusable.length - 1]
+    const active = document.activeElement
+    if (e.shiftKey && (active === first || active === panel)) {
+      e.preventDefault()
+      last.focus()
+    } else if (!e.shiftKey && active === last) {
+      e.preventDefault()
+      first.focus()
+    }
+  }
+
+  return (
+    <div
+      className="secret-overlay"
+      onClick={onClose}
+      onKeyDown={handleKeyDown}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Regalo secreto"
+    >
+      <div
+        ref={panelRef}
+        className="secret-card"
+        onClick={e => e.stopPropagation()}
+        style={{ maxHeight: '88vh', overflowY: 'auto' }}
+      >
+        <span className="secret-card-envelope">💌</span>
+        <h3 className="secret-card-title">{SECRET_PLACEHOLDER_TITLE}</h3>
+        <p className="secret-card-body">{SECRET_PLACEHOLDER_BODY}</p>
+        <div>
+          <span className="secret-card-tag">Se desbloquea a las {SECRET_UNLOCK_HOUR}:00 (hora de Lima)</span>
+        </div>
+        <div className="quiz-next-row">
+          <button type="button" onClick={onClose} className="gift-cta-ghost">
+            Cerrar ✨
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Main App ──────────────────────────────────────────────────────────────────
 export default function App() {
   const [phase,       setPhase]       = useState<Phase>('intro')
   const [giftPhase,   setGiftPhase]   = useState<GiftPhase>('idle')
   const [planetStage, setPlanetStage] = useState(0)
-  const [secretOpen,  setSecretOpen]  = useState(false)
   const [musicOn,     setMusicOn]     = useState(false)
-  const [volume,      setVolume]      = useState(0.3)
-  const [currentTrack,setCurrentTrack]= useState(0)
+  const [volume,      setVolume]      = useState(initialSave.volume)
+  const [currentTrack,setCurrentTrack]= useState(initialSave.pickedTrack)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration,    setDuration]    = useState(0)
-  const [scrollY,     setScrollY]     = useState(0)
+
+  // ── Progreso de los 5 regalos ──
+  const [completedGifts, setCompletedGifts] = useState<Record<GiftId, boolean>>(() => {
+    const base: Record<GiftId, boolean> = { 1: false, 2: false, 3: false, 4: false, 5: false }
+    for (const id of initialSave.completedGifts) base[id] = true
+    return base
+  })
+  const [openGift,       setOpenGift]       = useState<GiftId | null>(null)
+  const [unlockedBanner, setUnlockedBanner] = useState<GiftId | null>(null)
+
+  // ── Quiz + regalo secreto ──
+  const [quizBest,            setQuizBest]            = useState(() => Math.max(0, Math.min(QUIZ_TOTAL, initialSave.quizBest)))
+  const [secretUnlockedBanner,setSecretUnlockedBanner]= useState(false)
+  const [secretBoxOpen,       setSecretBoxOpen]       = useState(false)
+  const [secretEscaping,      setSecretEscaping]      = useState(false)
+  const [secretAttempts,      setSecretAttempts]      = useState(0)
+  const [secretPatience,      setSecretPatience]      = useState(false)
+  const quizBestRef = useRef(quizBest)
+  const secretUnlockedRef = useRef(quizBest >= SECRET_GIFT_MIN_SCORE)
+
+  // Mantiene fresco el "ya pasó la hora" del regalo secreto sin recargar la página.
+  const [nowTick, setNowTick] = useState<number>(() => Date.now())
+  useEffect(() => {
+    const id = window.setInterval(() => setNowTick(Date.now()), 30000)
+    return () => window.clearInterval(id)
+  }, [])
 
   const audioRef        = useRef<HTMLAudioElement | null>(null)
-  const volumeRef       = useRef(0.3)
-  const lastVolumeRef   = useRef(0.3)
-  const currentTrackRef = useRef(0)
-  const scrollRef       = useRef<HTMLDivElement>(null)
+  const volumeRef       = useRef(initialSave.volume)
+  const lastVolumeRef   = useRef(initialSave.volume > 0 ? initialSave.volume : 0.3)
+  const currentTrackRef = useRef(initialSave.pickedTrack)
+  const hubRef          = useRef<HTMLDivElement | null>(null)
   const timersRef       = useRef<ReturnType<typeof setTimeout>[]>([])
 
-  // Scroll tracking for parallax
+  // Parallax por scroll sin re-renderizar React: escribe solo la variable CSS.
   const handleScroll = useCallback(() => {
-    if (scrollRef.current) setScrollY(scrollRef.current.scrollTop)
+    if (hubRef.current) {
+      const top = hubRef.current.querySelector<HTMLElement>('.main-scroll')?.scrollTop ?? 0
+      hubRef.current.style.setProperty('--parallax-px', String(top))
+    }
   }, [])
 
   const clearAllTimers = () => {
@@ -1095,9 +1543,9 @@ export default function App() {
     // 5. Travel through space
     addTimer(() => setPhase('traveling'), 2000)
 
-    // 6. Main scene arrives — start music + planet birth sequence
+    // 6. Hub arrives — start music + planet birth sequence
     addTimer(() => {
-      setPhase('main')
+      setPhase('hub')
       startMusic()
       setPlanetStage(1)                               // flash ring
     }, 3200)
@@ -1114,9 +1562,11 @@ export default function App() {
     setPhase('intro')
     setGiftPhase('idle')
     setPlanetStage(0)
-    setSecretOpen(false)
-    setScrollY(0)
-    if (scrollRef.current) scrollRef.current.scrollTop = 0
+    if (hubRef.current) {
+      const scroller = hubRef.current.querySelector<HTMLElement>('.main-scroll')
+      if (scroller) scroller.scrollTop = 0
+      hubRef.current.style.setProperty('--parallax-px', '0')
+    }
 
     // Música: detener y volver a la primera canción. El volumen se conserva.
     const audio = audioRef.current
@@ -1136,6 +1586,131 @@ export default function App() {
 
   useEffect(() => () => clearAllTimers(), [])
 
+  // ── Progreso de los regalos ──
+  const isUnlocked = useCallback(
+    (id: GiftId) => id === 1 || completedGifts[(id - 1) as GiftId],
+    [completedGifts]
+  )
+
+  const completedCount = useMemo(
+    () => GIFT_META.filter(g => completedGifts[g.id]).length,
+    [completedGifts]
+  )
+
+  const handleOpenGift = useCallback((id: GiftId) => {
+    setOpenGift(id)
+    // La playlist desbloquea el siguiente regalo con solo visitarla
+    // (además del botón "Hecho ✨" en caso de querer cerrarla antes).
+    if (id === 3 && !completedGifts[3]) {
+      setCompletedGifts(prev => ({ ...prev, 3: true }))
+      setUnlockedBanner(4)
+      addTimer(() => setUnlockedBanner(null), 3600)
+    }
+  }, [completedGifts])
+
+  const handlePickTrack = useCallback((i: number) => {
+    playTrack(i)
+    setMusicOn(true)
+  }, [playTrack])
+
+  // Marca un regalo como completado; `unlockNext` encadena el desbloqueo
+  // del siguiente regalo (el 5 es el último y no tiene siguiente).
+  const markCompleted = useCallback((id: GiftId, unlockNext: boolean) => {
+    setCompletedGifts(prev => ({ ...prev, [id]: true }))
+    if (unlockNext) {
+      const next = (id + 1) as GiftId
+      if (next <= 5) {
+        setUnlockedBanner(next)
+        addTimer(() => setUnlockedBanner(null), 3600)
+      }
+    }
+  }, [])
+
+  const completeGift = useCallback((id: GiftId) => {
+    setOpenGift(null)
+    markCompleted(id, true)
+  }, [markCompleted])
+
+  // Al terminar el Examen de amistad: guarda el mejor puntaje, cierra el regalo 5
+  // (sin desbloquear otro) y, si alcanzó el mínimo, revela la carta colgante.
+  const handleQuizFinish = useCallback((score: number) => {
+    const clamped = Math.max(0, Math.min(QUIZ_TOTAL, Math.floor(score)))
+    setQuizBest(prev => Math.max(prev, clamped))
+    const newBest = Math.max(quizBestRef.current, clamped)
+    quizBestRef.current = newBest
+    markCompleted(5, false)
+    if (newBest >= SECRET_GIFT_MIN_SCORE && !secretUnlockedRef.current) {
+      secretUnlockedRef.current = true
+      setSecretUnlockedBanner(true)
+      addTimer(() => setSecretUnlockedBanner(false), 4200)
+    }
+  }, [markCompleted])
+
+  // Hora local (número) en la zona horaria del regalo secreto.
+  const secretHourNow = useCallback((): number => {
+    try {
+      const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: SECRET_TIME_ZONE,
+        hour: 'numeric',
+        hourCycle: 'h23',
+      }).formatToParts(new Date())
+      const h = parts.find(p => p.type === 'hour')
+      const n = h ? Number(h.value) : NaN
+      return Number.isFinite(n) ? n : new Date().getHours()
+    } catch {
+      return new Date().getHours()
+    }
+  }, [])
+  // La carta colgante: antes de las 8 PM se escapa y no se abre. Después de
+  // varios intentos muestra el mensaje de paciencia. A partir de la hora se
+  // deja atrapar y abre el regalo secreto.
+  const secretOpenNow = useMemo(
+    () => nowTick >= 0 && secretHourNow() >= SECRET_UNLOCK_HOUR,
+    [nowTick, secretHourNow]
+  )
+
+  const handleSecretClick = useCallback(() => {
+    if (secretOpenNow) {
+      setSecretBoxOpen(true)
+      return
+    }
+    setSecretEscaping(false)
+    requestAnimationFrame(() => setSecretEscaping(true))
+    const attempts = secretAttempts + 1
+    setSecretAttempts(attempts)
+    if (attempts >= 3) {
+      setSecretPatience(true)
+      addTimer(() => setSecretPatience(false), 4500)
+    }
+    addTimer(() => setSecretEscaping(false), 1100)
+  }, [secretOpenNow, secretAttempts])
+
+  const handleClearProgress = useCallback(() => {
+    if (!window.confirm('¿Seguro que quieres borrar todo el progreso?')) return
+    clearSave()
+    setCompletedGifts({ 1: false, 2: false, 3: false, 4: false, 5: false })
+    setQuizBest(0)
+    quizBestRef.current = 0
+    secretUnlockedRef.current = false
+    setSecretUnlockedBanner(false)
+    setSecretBoxOpen(false)
+    setUnlockedBanner(null)
+    setOpenGift(null)
+  }, [])
+
+  // ── Persistencia del progreso (con debounce) ──
+  useEffect(() => {
+    const save: SaveState = {
+      version: 1,
+      completedGifts: GIFT_META.filter(g => completedGifts[g.id]).map(g => g.id),
+      quizBest,
+      pickedTrack: currentTrack,
+      volume,
+    }
+    const id = window.setTimeout(() => persistSave(save), 250)
+    return () => window.clearTimeout(id)
+  }, [completedGifts, quizBest, currentTrack, volume])
+
   // ── Shared background ──
   const spaceBg: React.CSSProperties = {
     background: 'radial-gradient(ellipse at 20% 50%, #1a003399 0%, transparent 50%), radial-gradient(ellipse at 80% 20%, #3300224d 0%, transparent 45%), radial-gradient(ellipse at 60% 80%, #220033aa 0%, transparent 40%), #05000d',
@@ -1147,7 +1722,7 @@ export default function App() {
   if (phase === 'intro') {
     return (
       <div className="relative w-full h-full flex flex-col items-center justify-center overflow-hidden" style={spaceBg}>
-        <StarField count={200} scrollY={0} />
+        <StarField count={200} />
         <FloatingParticles />
         <Sparkles count={10} />
 
@@ -1264,27 +1839,85 @@ export default function App() {
   }
 
   // ════════════════════════════════════════════════════════════════════════════
-  // MAIN
+  // HUB
   // ════════════════════════════════════════════════════════════════════════════
   return (
-    <div className="relative w-full h-full overflow-hidden" style={spaceBg}>
+    <div ref={hubRef} className="relative w-full h-full overflow-hidden" style={spaceBg}>
       {/* Parallax background layers */}
-      <StarField count={200} scrollY={scrollY} />
-      <FloatingParticles scrollY={scrollY} />
+      <StarField count={200} />
+      <FloatingParticles />
 
       {/* Recuerdos flotando por el espacio (posiciones inteligentes) */}
       <FloatingMessages messages={floatingMessages} />
 
+      {/* Banner de regalo desbloqueado */}
+      {unlockedBanner !== null && (
+        <div className="gift-unlock-layer" aria-live="polite">
+          <ConfettiBurst />
+          <div className="gift-banner" role="status">
+            <span style={{ fontSize: 24 }}>🎁</span>
+            <div>
+              <div className="gift-banner-title">Has desbloqueado un regalo nuevo</div>
+              <div className="gift-banner-meta">
+                {getGiftMeta(unlockedBanner).emoji} {getGiftMeta(unlockedBanner).title}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Banner del regalo secreto recién desbloqueado */}
+      {secretUnlockedBanner && (
+        <div className="gift-unlock-layer" aria-live="polite">
+          <ConfettiBurst />
+          <div className="gift-banner" role="status">
+            <span style={{ fontSize: 24 }}>🎁</span>
+            <div>
+              <div className="gift-banner-title">{SECRET_BANNER_TITLE}</div>
+              <div className="gift-banner-meta">{SECRET_BANNER_SUB}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Carta colgante del regalo secreto (se desbloquea con el quiz) */}
+      {quizBest >= SECRET_GIFT_MIN_SCORE && (
+        <div className="secret-hanger">
+          <div className="secret-thread" aria-hidden="true" />
+          <button
+            type="button"
+            aria-label="Carta colgante del regalo secreto"
+            className={`secret-letter${secretEscaping ? ' escaping' : ''}`}
+            style={{ '--sway': secretEscaping ? (Math.random() >= 0.5 ? 1 : -1) : 1 } as React.CSSProperties}
+            onClick={handleSecretClick}
+          >
+            <span className="secret-seal">{secretOpenNow ? '💌' : '❓'}</span>
+          </button>
+          <p className="secret-hint-label">
+            {secretOpenNow ? SECRET_AVAILABLE_LABEL : SECRET_ESCAPING_LABEL}
+          </p>
+          {secretPatience && (
+            <p className="secret-patience" role="status">
+              {SECRET_PATIENCE_MSG}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Mensaje del regalo secreto (aún pendiente de contenido final) */}
+      {secretBoxOpen && (
+        <SecretDialog onClose={() => setSecretBoxOpen(false)} />
+      )}
+
       {/* Scrollable content */}
       <div
-        ref={scrollRef}
         onScroll={handleScroll}
         className="main-scroll relative z-10 h-full"
         style={{ scrollBehavior: 'smooth' }}
       >
         {/* ── Hero ── */}
-        <section className="min-h-screen flex flex-col items-center justify-center gap-12 px-6 py-20 relative">
-          <Sparkles count={12} />
+        <section className="min-h-screen flex flex-col items-center justify-center gap-10 px-6 py-16 relative">
+          <Sparkles count={10} />
 
           {/* Planet birth sequence */}
           <PlanetReveal stage={planetStage} />
@@ -1294,7 +1927,7 @@ export default function App() {
             className="text-center"
             style={{
               opacity:    planetStage >= 5 ? 1 : 0,
-              transition: 'none',
+              transition: 'opacity 0.6s ease',
               animation:  planetStage >= 5 ? 'titleReveal 1s cubic-bezier(0.25, 0.46, 0.45, 0.94) both' : 'none',
             }}
           >
@@ -1328,111 +1961,38 @@ export default function App() {
               21 años llenos de esfuerzo, dedicación y sueños por cumplir.
             </p>
           </div>
-        </section>
 
-        {/* ── Sobre Shantal ── */}
-        <section className="px-6 py-16 max-w-4xl mx-auto">
-          <AnimatedOnScroll>
-            <h2
-              className="text-center mb-12"
-              style={{
-                fontFamily: "'Cinzel', serif",
-                color:      '#ff6ba8',
-                fontSize:   'clamp(20px, 4vw, 32px)',
-                fontWeight: 600,
-                textShadow: '0 0 20px #ff2d7888',
-                animation:  'glowText 3s ease-in-out infinite',
-              }}
-            >
-              ✦ Sobre Shantal ✦
-            </h2>
-          </AnimatedOnScroll>
+          {/* ── Elige un regalo ── */}
+          <div className="text-center" style={{ opacity: planetStage >= 5 ? 1 : 0, transition: 'opacity 0.6s 0.5s ease' }}>
+            <h2 className="hub-heading">🎁 Elige un regalo</h2>
+            <p className="hub-progress">
+              Completa cada regalo para desbloquear el siguiente · {completedCount} de {GIFT_META.length}
+            </p>
+          </div>
 
-          <div className="grid grid-cols-1 gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
-            {[
-              { emoji: '🦷', text: 'La futura odontóloga más dedicada.',                    delay: 0 },
-              { emoji: '📚', text: 'Siempre esforzándose para lograr sus metas.',            delay: 0.1 },
-              { emoji: '🐱', text: 'Amante de los gatos y orgullosa integrante del equipo de todos los gatos que viven en su casa.', delay: 0.2 },
-              { emoji: '😂', text: 'Y la persona que más disfruto molestar.',                delay: 0.3 },
-              { emoji: '✨', text: 'Una persona única que merece un cumpleaños increíble.',  delay: 0.4 },
-            ].map((c, i) => (
-              <AnimatedOnScroll key={i} delay={c.delay}>
-                <Card {...c} />
-              </AnimatedOnScroll>
+          {/* ── Grid de regalos ── */}
+          <div className="gifts-grid">
+            {GIFT_META.map((g, i) => (
+              <GiftSlot
+                key={g.id}
+                meta={g}
+                unlocked={isUnlocked(g.id)}
+                completed={completedGifts[g.id]}
+                delay={0.15 + i * 0.12}
+                onClick={handleOpenGift}
+              />
             ))}
           </div>
-        </section>
 
-        {/* ── Momentos especiales ── */}
-        <section className="px-6 py-16 max-w-3xl mx-auto">
-          <AnimatedOnScroll>
-            <h2
-              className="text-center mb-12"
-              style={{
-                fontFamily: "'Cinzel', serif",
-                color:      '#ff6ba8',
-                fontSize:   'clamp(20px, 4vw, 32px)',
-                fontWeight: 600,
-                textShadow: '0 0 20px #ff2d7888',
-              }}
-            >
-              ✦ Momentos especiales ✦
-            </h2>
-          </AnimatedOnScroll>
-
-          <div className="flex flex-col gap-4">
-            {[
-              { emoji: '🎮', title: 'League of Legends', text: 'Desde que hacemos dúo las rankeds son mucho más divertidas.',      delay: 0 },
-              { emoji: '🧩', title: 'Puzzles',            text: 'Ya no son puzzles de 1000 piezas, ahora vamos por 2000 o más.',    delay: 0.12 },
-              { emoji: '🚀', title: 'Roblox',             text: 'Hospital de animales, bibliotecas, Dress To Impress y muchas aventuras más.', delay: 0.24 },
-              { emoji: '🦷', title: 'Odontología',        text: 'Cada esfuerzo te acerca más a tus sueños.',                        delay: 0.36 },
-            ].map((m, i) => (
-              <AnimatedOnScroll key={i} delay={m.delay}>
-                <MomentCard {...m} />
-              </AnimatedOnScroll>
-            ))}
-          </div>
-        </section>
-
-        {/* ── Secret message + restart ── */}
-        <section className="py-16 flex flex-col items-center gap-8 px-6">
-          <AnimatedOnScroll>
-            <button
-              onClick={() => setSecretOpen(true)}
-              className="px-10 py-4 rounded-full text-lg font-medium transition-all duration-300 hover:scale-105"
-              style={{
-                background:    'linear-gradient(135deg, #ff2d78, #ff0055, #cc0044)',
-                color:         'white',
-                border:        '1px solid #ff6ba8',
-                boxShadow:     '0 0 30px #ff2d7866, 0 0 60px #ff2d7833',
-                fontFamily:    "'Poppins', sans-serif",
-                fontWeight:    500,
-                cursor:        'pointer',
-                animation:     'pulse-glow 3s ease-in-out infinite',
-                letterSpacing: '0.04em',
-              }}
-            >
-              Ver mensaje secreto ❤️
-            </button>
-          </AnimatedOnScroll>
-
-          <AnimatedOnScroll delay={0.15}>
-            <button
-              onClick={handleRestart}
-              className="px-8 py-3 rounded-full text-sm font-medium transition-all duration-300 hover:scale-105"
-              style={{
-                background:    'transparent',
-                color:         '#ff6ba8',
-                border:        '1px solid #ff2d7866',
-                boxShadow:     '0 0 15px #ff2d7833',
-                fontFamily:    "'Poppins', sans-serif",
-                cursor:        'pointer',
-                letterSpacing: '0.06em',
-              }}
-            >
+          {/* ── Acciones ── */}
+          <div className="hub-actions">
+            <button type="button" onClick={handleRestart} className="gift-cta-ghost">
               🎁 Abrir regalo nuevamente
             </button>
-          </AnimatedOnScroll>
+            <button type="button" onClick={handleClearProgress} className="gift-cta-ghost">
+              🗑️ Borrar progreso
+            </button>
+          </div>
         </section>
 
         <div className="h-24" />
@@ -1451,7 +2011,25 @@ export default function App() {
         onPrev={prevTrack}
         onNext={nextTrack}
       />
-      {secretOpen && <SecretLetter onClose={() => setSecretOpen(false)} />}
+
+      {openGift !== null && (
+        <GiftShell
+          meta={getGiftMeta(openGift)}
+          completed={completedGifts[openGift]}
+          completable={openGift === 5 ? quizBest > 0 : true}
+          onClose={() => setOpenGift(null)}
+          onComplete={() => completeGift(openGift)}
+        >
+          <GiftPlaceholderBody
+            id={openGift}
+            onPickTrack={handlePickTrack}
+            activeTrack={currentTrack}
+            isPlaying={musicOn}
+            quizBest={quizBest}
+            onQuizFinish={handleQuizFinish}
+          />
+        </GiftShell>
+      )}
     </div>
   )
 }
