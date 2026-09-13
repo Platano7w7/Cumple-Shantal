@@ -1,6 +1,7 @@
 // ── Tarjeta de regalo del hub ────────────────────────────────────────────────
 import { useState } from 'react'
 import type { GiftMeta, GiftId } from '../gift-content'
+import { GIFT_META } from '../gift-content'
 
 function GiftSlot({
   meta, unlocked, completed, delay, onClick,
@@ -38,7 +39,7 @@ function GiftSlot({
           handleClick()
         }
       }}
-      aria-label={`Regalo ${meta.id} de 5. ${statusLabel}`}
+      aria-label={`Regalo ${meta.id} de ${GIFT_META.length}. ${statusLabel}`}
       style={{
         animation: `fadeInUp 0.6s ${delay}s both`,
       }}

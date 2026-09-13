@@ -54,7 +54,7 @@ export function loadSave(): SaveState {
       version: DEFAULT_SAVE.version,
       completedGifts: Array.isArray(parsed.completedGifts)
         ? parsed.completedGifts
-            .filter((id): id is GiftId => id === 1 || id === 2 || id === 3 || id === 4 || id === 5)
+            .filter((id): id is GiftId => id === 1 || id === 2 || id === 3 || id === 4)
             .filter((id, i, arr) => arr.indexOf(id) === i)
         : [],
       quizBest: typeof parsed.quizBest === 'number' ? parsed.quizBest : 0,

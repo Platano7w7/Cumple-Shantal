@@ -19,13 +19,7 @@ import {
   SECRET_AVAILABLE_LABEL,
   SECRET_BANNER_SUB,
   SECRET_BANNER_TITLE,
-  SECRET_ESCAPING_LABEL,
   SECRET_GIFT_MIN_SCORE,
-  SECRET_PATIENCE_MSG,
-  SECRET_PLACEHOLDER_BODY,
-  SECRET_PLACEHOLDER_TITLE,
-  SECRET_TIME_ZONE,
-  SECRET_UNLOCK_HOUR,
   getGiftMeta,
 } from './gift-content'
 import type { GiftId, PlaylistTrack, QuizQuestion, QuizResult } from './gift-content'
@@ -779,6 +773,12 @@ function formatTime(seconds: number): string {
 const MUSIC_PLAYER_WIDTH = 460  // px
 const MUSIC_PLAYER_HEIGHT = 140 // px (altura mínima)
 
+// ── Tamaño del reproductor global de YouTube ────────────────────────────────
+// Única fuente de verdad: YOUTUBE_PLAYER_WIDTH rige el contenedor y
+// YOUTUBE_PLAYER_HEIGHT la altura del frame del video.
+const YOUTUBE_PLAYER_WIDTH = 420  // px
+const YOUTUBE_PLAYER_HEIGHT = 260 // px
+
 function MusicControls({
   musicOn, onToggle, onToggleMute, volume, onVolumeChange,
   trackTitle, currentTime, duration, onSeek, onPrev, onNext, elevated,
@@ -925,7 +925,11 @@ function YoutubeGlobalPlayer({
   onClear: () => void
 }) {
   return (
-    <div className="youtube-global" aria-label="Reproductor de YouTube">
+    <div
+      className="youtube-global"
+      style={{ width: `min(${YOUTUBE_PLAYER_WIDTH}px, 92vw)` }}
+      aria-label="Reproductor de YouTube"
+    >
       <div className="youtube-player-head">
         <span className="youtube-player-now" role="status">
           ► {video.title}
@@ -940,7 +944,10 @@ function YoutubeGlobalPlayer({
           ✕
         </button>
       </div>
-      <div className="youtube-player-frame">
+      <div
+        className="youtube-player-frame"
+        style={{ height: `${YOUTUBE_PLAYER_HEIGHT}px` }}
+      >
         <iframe
           src={`https://www.youtube.com/embed/${video.videoId}?autoplay=1`}
           title={video.title}
@@ -975,6 +982,14 @@ function GiftInicios() {
 
       <p className="gift-closing" style={{ animation: 'fadeInUp 0.7s 0.2s both' }}>
         {GAME_CLOSING}
+      </p>
+
+      <p
+        className="gift-closing"
+        style={{ whiteSpace: 'pre-line', animation: 'fadeInUp 0.7s 0.3s both' }}
+      >
+        {'✨ ✨ ✨\n\n'}
+        {LETTER_CLOSING}
       </p>
     </div>
   )
@@ -1206,7 +1221,7 @@ function GiftPlaylist({
   )
 }
 
-// ── Regalo 4: Carta de cumpleaños — el capítulo más íntimo ──────────────────
+// ── Mensaje final: la carta de cumpleaños (regalo secreto) ───────────────
 function GiftCarta() {
   const styleClass: Record<string, string> = {
     saludo: 'letter-block-saludo',
@@ -1236,11 +1251,6 @@ function GiftCarta() {
           ))}
         </div>
       ))}
-
-      <div className="carta-bridge" style={{ animation: 'fadeInUp 0.8s 0.3s both' }}>
-        <span className="carta-divider" aria-hidden="true">✦ ✦ ✦</span>
-        <p className="carta-bridge-text">{LETTER_CLOSING}</p>
-      </div>
     </div>
   )
 }
@@ -1264,10 +1274,13 @@ function GiftQuiz({
   const answeredCount = selected.filter(s => s !== -1).length
 
   const computeScore = (sel: number[]) =>
-    QUIZ_QUESTIONS.reduce(
-      (acc, question, i) => (question.correct !== null && sel[i] === question.correct ? acc + question.points : acc),
-      0
-    )
+    QUIZ_QUESTIONS.reduce((acc, question, i) => {
+      const picked = sel[i]
+      const scored =
+        (question.allCorrect && picked !== -1) ||
+        (question.correct !== null && picked === question.correct)
+      return scored ? acc + question.points : acc
+    }, 0)
 
   const handleAnswer = (opt: number) => {
     if (revealed) return
@@ -1303,7 +1316,7 @@ function GiftQuiz({
     firedRef.current = false
   }
 
-  const isCorrectSel = q.correct !== null && answered === q.correct
+  const isCorrectSel = Boolean(q.allCorrect) || (q.correct !== null && answered === q.correct)
 
   if (done) {
     const result: QuizResult = QUIZ_RESULTS.find(r => finalScore >= r.min) ?? QUIZ_RESULTS[QUIZ_RESULTS.length - 1]
@@ -1350,17 +1363,17 @@ function GiftQuiz({
         <div className="quiz-options">
           {q.options.map((opt, i) => {
             const chosen = answered === i
+            const isCorrectOpt = Boolean(q.allCorrect) || i === q.correct
+            let optState = ''
+            if (chosen && !revealed) optState = 'quiz-option-chosen'
+            else if (revealed) {
+              optState = isCorrectOpt ? 'quiz-option-correct' : chosen ? 'quiz-option-wrong' : 'quiz-option-dim'
+            }
             return (
               <button
                 key={i}
                 type="button"
-                className={[
-                  'quiz-option',
-                  chosen && !revealed ? 'quiz-option-chosen' : '',
-                  revealed && i === q.correct ? 'quiz-option-correct' : '',
-                  revealed && chosen && i !== q.correct ? 'quiz-option-wrong' : '',
-                  revealed && !chosen ? 'quiz-option-dim' : '',
-                ].filter(Boolean).join(' ')}
+                className={['quiz-option', optState].filter(Boolean).join(' ')}
                 onClick={() => handleAnswer(i)}
                 disabled={revealed}
               >
@@ -1373,14 +1386,14 @@ function GiftQuiz({
 
       {revealed && (
         <div className="quiz-feedback" style={{ animation: 'fadeInUp 0.4s both' }} role="status" aria-live="polite">
-          <span className="quiz-feedback-icon">{q.correct === null ? '💬' : isCorrectSel ? '🎉' : '😅'}</span>
+          <span className="quiz-feedback-icon">{isCorrectSel ? '🎉' : q.correct === null ? '💬' : '😅'}</span>
           <div>
             <p className="quiz-feedback-text">
               {q.options[answered]?.feedback ?? (isCorrectSel ? '¡Correcto!' : 'No era esa…')}
             </p>
-            {q.correct !== null && (
+            {(q.correct !== null || q.allCorrect) && (
               <p className="quiz-feedback-pts">
-                {answered === q.correct ? `+${q.points} pts` : '0 pts'}
+                {isCorrectSel ? `+${q.points} pts` : '0 pts'}
               </p>
             )}
           </div>
@@ -1438,9 +1451,9 @@ function GiftPlaceholderBody({
     return <GiftInicios />
   }
   if (id === 4) {
-    return <GiftCarta />
+    return <GiftQuiz bestScore={quizBest} onFinish={onQuizFinish} />
   }
-  return <GiftQuiz bestScore={quizBest} onFinish={onQuizFinish} />
+  return null
 }
 
 // ── Diálogo del regalo secreto con trampa de foco y cierre con Escape ────────
@@ -1506,11 +1519,9 @@ function SecretDialog({
         style={{ maxHeight: '88vh', overflowY: 'auto' }}
       >
         <span className="secret-card-envelope">💌</span>
-        <h3 className="secret-card-title">{SECRET_PLACEHOLDER_TITLE}</h3>
-        <p className="secret-card-body">{SECRET_PLACEHOLDER_BODY}</p>
-        <div>
-          <span className="secret-card-tag">Se desbloquea a las {SECRET_UNLOCK_HOUR}:00 (hora de Lima)</span>
-        </div>
+        <h3 className="secret-card-title">Mensaje final</h3>
+        <p className="secret-card-body">Te llegó una carta… léela despacio ✨</p>
+        <GiftCarta />
         <div className="quiz-next-row">
           <button type="button" onClick={onClose} className="gift-cta-ghost">
             Cerrar ✨
@@ -1559,31 +1570,21 @@ export default function App() {
   const [currentTime, setCurrentTime] = useState(0)
   const [duration,    setDuration]    = useState(0)
 
-  // ── Progreso de los 5 regalos ──
+  // ── Progreso de los 4 regalos ──
   const [completedGifts, setCompletedGifts] = useState<Record<GiftId, boolean>>(() => {
-    const base: Record<GiftId, boolean> = { 1: false, 2: false, 3: false, 4: false, 5: false }
+    const base: Record<GiftId, boolean> = { 1: false, 2: false, 3: false, 4: false }
     for (const id of initialSave.completedGifts) base[id] = true
     return base
   })
   const [openGift,       setOpenGift]       = useState<GiftId | null>(null)
   const [unlockedBanner, setUnlockedBanner] = useState<GiftId | null>(null)
 
-  // ── Quiz + regalo secreto ──
+  // ── Quiz + mensaje secreto final ──
   const [quizBest,            setQuizBest]            = useState(() => Math.max(0, Math.min(QUIZ_TOTAL, initialSave.quizBest)))
   const [secretUnlockedBanner,setSecretUnlockedBanner]= useState(false)
   const [secretBoxOpen,       setSecretBoxOpen]       = useState(false)
-  const [secretEscaping,      setSecretEscaping]      = useState(false)
-  const [secretAttempts,      setSecretAttempts]      = useState(0)
-  const [secretPatience,      setSecretPatience]      = useState(false)
   const quizBestRef = useRef(quizBest)
   const secretUnlockedRef = useRef(quizBest >= SECRET_GIFT_MIN_SCORE)
-
-  // Mantiene fresco el "ya pasó la hora" del regalo secreto sin recargar la página.
-  const [nowTick, setNowTick] = useState<number>(() => Date.now())
-  useEffect(() => {
-    const id = window.setInterval(() => setNowTick(Date.now()), 30000)
-    return () => window.clearInterval(id)
-  }, [])
 
   const audioRef        = useRef<HTMLAudioElement | null>(null)
   const volumeRef       = useRef(initialSave.volume)
@@ -1774,6 +1775,19 @@ export default function App() {
     setMusicOn(true)
   }, [playTrack])
 
+  // Al reproducir un video de YouTube se pausa el audio local (sin reiniciarlo):
+  // nunca deben sonar ambos a la vez. El usuario retoma la canción manualmente.
+  const handleSelectYouTube = useCallback((video: YoutubeVideo) => {
+    audioRef.current?.pause()
+    setMusicOn(false)
+    setYoutubeVideo(video)
+  }, [])
+
+  // Cerrar/quitar el video de YouTube NO reanuda la canción local: queda pausada.
+  const handleClearYouTube = useCallback(() => {
+    setYoutubeVideo(null)
+  }, [])
+
   // Marca un regalo como completado; `unlockNext` encadena el desbloqueo
   // del siguiente regalo según el orden del HUB (el último no tiene siguiente).
   const markCompleted = useCallback((id: GiftId, unlockNext: boolean) => {
@@ -1799,7 +1813,7 @@ export default function App() {
     setQuizBest(prev => Math.max(prev, clamped))
     const newBest = Math.max(quizBestRef.current, clamped)
     quizBestRef.current = newBest
-    markCompleted(5, false)
+    markCompleted(4, false)
     if (newBest >= SECRET_GIFT_MIN_SCORE && !secretUnlockedRef.current) {
       secretUnlockedRef.current = true
       setSecretUnlockedBanner(true)
@@ -1807,49 +1821,15 @@ export default function App() {
     }
   }, [markCompleted])
 
-  // Hora local (número) en la zona horaria del regalo secreto.
-  const secretHourNow = useCallback((): number => {
-    try {
-      const parts = new Intl.DateTimeFormat('en-US', {
-        timeZone: SECRET_TIME_ZONE,
-        hour: 'numeric',
-        hourCycle: 'h23',
-      }).formatToParts(new Date())
-      const h = parts.find(p => p.type === 'hour')
-      const n = h ? Number(h.value) : NaN
-      return Number.isFinite(n) ? n : new Date().getHours()
-    } catch {
-      return new Date().getHours()
-    }
-  }, [])
-  // La carta colgante: antes de las 8 PM se escapa y no se abre. Después de
-  // varios intentos muestra el mensaje de paciencia. A partir de la hora se
-  // deja atrapar y abre el regalo secreto.
-  const secretOpenNow = useMemo(
-    () => nowTick >= 0 && secretHourNow() >= SECRET_UNLOCK_HOUR,
-    [nowTick, secretHourNow]
-  )
-
+  // La carta colgante se deja atrapar en cuanto el examen alcanza el mínimo.
   const handleSecretClick = useCallback(() => {
-    if (secretOpenNow) {
-      setSecretBoxOpen(true)
-      return
-    }
-    setSecretEscaping(false)
-    requestAnimationFrame(() => setSecretEscaping(true))
-    const attempts = secretAttempts + 1
-    setSecretAttempts(attempts)
-    if (attempts >= 3) {
-      setSecretPatience(true)
-      addTimer(() => setSecretPatience(false), 4500)
-    }
-    addTimer(() => setSecretEscaping(false), 1100)
-  }, [secretOpenNow, secretAttempts])
+    setSecretBoxOpen(true)
+  }, [])
 
   const handleClearProgress = useCallback(() => {
     if (!window.confirm('¿Seguro que quieres borrar todo el progreso?')) return
     clearSave()
-    setCompletedGifts({ 1: false, 2: false, 3: false, 4: false, 5: false })
+    setCompletedGifts({ 1: false, 2: false, 3: false, 4: false })
     setQuizBest(0)
     quizBestRef.current = 0
     secretUnlockedRef.current = false
@@ -1925,31 +1905,23 @@ export default function App() {
         </div>
       )}
 
-      {/* Carta colgante del regalo secreto (se desbloquea con el quiz) */}
+      {/* Carta colgante del mensaje final (se desbloquea con el examen) */}
       {quizBest >= SECRET_GIFT_MIN_SCORE && (
         <div className="secret-hanger">
           <div className="secret-thread" aria-hidden="true" />
           <button
             type="button"
             aria-label="Carta colgante del regalo secreto"
-            className={`secret-letter${secretEscaping ? ' escaping' : ''}`}
-            style={{ '--sway': secretEscaping ? (Math.random() >= 0.5 ? 1 : -1) : 1 } as React.CSSProperties}
+            className="secret-letter"
             onClick={handleSecretClick}
           >
-            <span className="secret-seal">{secretOpenNow ? '💌' : '❓'}</span>
+            <span className="secret-seal">💌</span>
           </button>
-          <p className="secret-hint-label">
-            {secretOpenNow ? SECRET_AVAILABLE_LABEL : SECRET_ESCAPING_LABEL}
-          </p>
-          {secretPatience && (
-            <p className="secret-patience" role="status">
-              {SECRET_PATIENCE_MSG}
-            </p>
-          )}
+          <p className="secret-hint-label">{SECRET_AVAILABLE_LABEL}</p>
         </div>
       )}
 
-      {/* Mensaje del regalo secreto (aún pendiente de contenido final) */}
+      {/* Mensaje final: la carta de cumpleaños */}
       {secretBoxOpen && (
         <SecretDialog onClose={() => setSecretBoxOpen(false)} />
       )}
@@ -2048,14 +2020,14 @@ export default function App() {
       )}
 
       {youtubeVideo && (
-        <YoutubeGlobalPlayer video={youtubeVideo} onClear={() => setYoutubeVideo(null)} />
+        <YoutubeGlobalPlayer video={youtubeVideo} onClear={handleClearYouTube} />
       )}
 
       {openGift !== null && (
         <GiftShell
           meta={getGiftMeta(openGift)}
           completed={completedGifts[openGift]}
-          completable={openGift === 5 ? quizBest > 0 : true}
+          completable={openGift === 4 ? quizBest > 0 : true}
           onClose={() => setOpenGift(null)}
           onComplete={() => completeGift(openGift)}
         >
@@ -2070,8 +2042,8 @@ export default function App() {
           youtubeQuery={youtubeQuery}
           youtubeVideo={youtubeVideo}
           onYouTubeQueryChange={setYoutubeQuery}
-          onSelectVideo={setYoutubeVideo}
-          onClearVideo={() => setYoutubeVideo(null)}
+          onSelectVideo={handleSelectYouTube}
+          onClearVideo={handleClearYouTube}
         />
         </GiftShell>
       )}

@@ -1,7 +1,7 @@
 // ── Contenido de la experiencia (editable) ──────────────────────────────────
 // Este archivo es el único lugar donde editar textos, canciones y preguntas.
 
-export type GiftId = 1 | 2 | 3 | 4 | 5
+export type GiftId = 1 | 2 | 3 | 4
 
 export interface GiftMeta {
   id: GiftId
@@ -14,8 +14,7 @@ export const GIFT_META: GiftMeta[] = [
   { id: 1, emoji: '🎵', title: 'Playlist para Shantal', tagline: 'Elige la canción o déjala fluir.' },
   { id: 2, emoji: '📒', title: 'Los viernes', tagline: 'Notas y polaroids de nuestros viernes.' },
   { id: 3, emoji: '🎮', title: 'Los inicios', tagline: 'Momentos jugando: cómo empezó la amistad.' },
-  { id: 4, emoji: '💌', title: 'Carta de cumpleaños', tagline: 'Una carta muy especial para ti.' },
-  { id: 5, emoji: '🧠', title: 'Examen de amistad', tagline: '5 preguntas · 20 puntos. ¿Cuánto me conoces?' },
+  { id: 4, emoji: '🧠', title: 'Examen de amistad', tagline: '5 preguntas · 25 puntos. ¿Cuánto me conoces?' },
 ]
 
 export function getGiftMeta(id: GiftId): GiftMeta {
@@ -126,7 +125,7 @@ export const PLAYLIST: PlaylistTrack[] = [
   },
 ]
 
-// ── G4: Carta de cumpleaños ──────────────────────────────────────────────────
+// ── Carta de cumpleaños (mensaje final) ──────────────────────────────────────
 // La carta está diseñada como bloques INDEPENDIENTES de contenido para poder
 // editar cada sección sin tocar el código ni el resto del texto.
 //
@@ -190,25 +189,26 @@ export const LETTER_BLOCKS: LetterBlock[] = [
   },
 ]
 
-// Cierre del capítulo: prepara a Shantal para el Examen de amistad.
+// Cierre del capítulo: prepara a Shantal para el Examen de amistad (se muestra al
+// final del Regalo 3, Los inicios).
 export const LETTER_CLOSING =
-  'Y con esto, este capítulo queda cerrado… Solo falta una última cosa: saber cuánto me conoces de verdad.'
+  'Y con esto, este capítulo queda cerrado...\nSolo falta una última cosa:\nsaber cuánto me conoces de verdad.'
 
-// ── G5: Examen de amistad ───────────────────────────────────────────────────
+// ── G4: Examen de amistad ───────────────────────────────────────────────────
 export interface QuizOption { label: string; feedback?: string }
 export interface QuizQuestion {
   prompt: string
   options: QuizOption[]
   correct: number | null   // índice de la opción correcta; null = no suma puntaje
   points: number
+  allCorrect?: boolean     // true = cualquier opción es correcta y suma puntos
 }
-export const QUIZ_TOTAL = 20
+export const QUIZ_TOTAL = 25
 
-// ── Respuestas definitivas pendientes ─────────────────────────────────────────
-// Completa aquí las respuestas correctas de las preguntas que faltan:
+// ── Respuestas definitivas de las preguntas sí/no ────────────────────────────
 //    0 = primera opción ("Sí") · 1 = segunda opción ("No")
-export const QUIZ_CAFE_SIN_AZUCAR: number | null = null // TODO: responde 0 (Sí) o 1 (No)
-export const QUIZ_TOMA_GASEOSA: number | null = null    // TODO: responde 0 (Sí) o 1 (No)
+export const QUIZ_CAFE_SIN_AZUCAR: number | null = 0 // Sí = correcta · No = incorrecta
+export const QUIZ_TOMA_GASEOSA: number | null = 1    // No = correcta · Sí = incorrecta
 
 export const QUIZ_QUESTIONS: QuizQuestion[] = [
   {
@@ -234,12 +234,13 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
   {
     prompt: '¿Hace cuánto tiempo aproximadamente?',
     options: [
-      { label: 'Marzo', feedback: 'Me matas pero no me acuerdo :c' },
-      { label: 'Abril', feedback: 'Me matas pero no me acuerdo :c' },
-      { label: 'Febrero', feedback: 'Me matas pero no me acuerdo :c' },
+      { label: 'Marzo', feedback: '¡Correcto! Ninguna opción estaba mal 💖' },
+      { label: 'Abril', feedback: '¡Correcto! Ninguna opción estaba mal 💖' },
+      { label: 'Febrero', feedback: '¡Correcto! Ninguna opción estaba mal 💖' },
     ],
     correct: null,
-    points: 0,
+    points: 5,
+    allCorrect: true,
   },
   {
     prompt: '¿Me gusta el café sin azúcar?',
@@ -259,7 +260,7 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
 export interface QuizResult { min: number; title: string; message: string }
 export const QUIZ_RESULTS: QuizResult[] = [
   {
-    min: 20,
+    min: 25,
     title: '🏆 Amistad nivel legendaria',
     message: '¡Perfecto! Me conoces incluso mejor que yo mismo. Eso se celebra con confeti.',
   },
@@ -280,21 +281,10 @@ export const QUIZ_RESULTS: QuizResult[] = [
   },
 ]
 
-// ── Regalo secreto + desbloqueo por horario ──────────────────────────────────
+// ── Mensaje secreto final (la carta de cumpleaños) ───────────────────────────
 export const SECRET_GIFT_MIN_SCORE = 12
-export const SECRET_UNLOCK_HOUR = 20   // 8:00 PM, hora de Lima
-export const SECRET_TIME_ZONE = 'America/Lima'
 
 export const SECRET_BANNER_TITLE = 'Has desbloqueado un regalo secreto'
 export const SECRET_BANNER_SUB = 'Busca la carta colgante en el cielo de tu mundo ✨'
 
 export const SECRET_AVAILABLE_LABEL = 'Ya se deja atrapar ✨'
-export const SECRET_ESCAPING_LABEL = 'Se escapa… vuelve después de las 8 PM 😏'
-
-export const SECRET_PATIENCE_MSG =
-  'Tienes que esperar para este mensaje, paciencia amistad aunque no tienes mucha ajsdjajaf'
-
-// La carta aún no contiene el mensaje final (se añade en una fase posterior).
-export const SECRET_PLACEHOLDER_TITLE = 'Mensaje final (pendiente)'
-export const SECRET_PLACEHOLDER_BODY =
-  'La carta se abrió. El verdadero mensaje final se coloca aquí en breve.'
