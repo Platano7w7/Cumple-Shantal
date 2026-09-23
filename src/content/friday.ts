@@ -10,28 +10,28 @@ export const FRIDAY_NOTES: FridayNote[] = [
   {
     emoji: '📅',
     title: 'El plan perfecto',
-    text: 'Solo vernos y ponernos al día. Era simple, pero era exactamente lo que esperaba toda la semana.',
+    text: 'Solo vernos y ponernos al día. Era simple, pero era exactamente lo que esperaba despues de toda una semana.',
   },
   {
     emoji: '💬',
     title: 'Conversaciones que no terminaban',
-    text: 'Hablamos de nuestros días, de nuestros planes, de esa persona que nos hacía enojar… y se nos iban las horas.',
-    sign: '— y no queríamos que acabara',
+    text: 'Hablamos de como te fue en la semana, que clases tuviste, como te fue en los examenes, si viste a tu querido 23 que ahora es 24, pero no importar que siempre habia conversaciones ',
+    sign: '— y ojala anunca acabe las conversaciones',
   },
   {
     emoji: '☕',
     title: 'El tiempo compartido',
-    text: 'Un poco de música, muchas risas y mucho tiempo juntos. No necesitábamos nada más para ser felices.',
+    text: 'Muchas risas, algo de tiempo juntos, todo eso es lo necesario para ya ser feliz un viernes por la tarde en ese hueco hasta las 8 y espero que de igual manera haber podido ayudarte a distraerte un poco por lo menos de todo el estres que siempre cargas',
   },
   {
     emoji: '📚',
     title: 'Verte cumplir tus sueños',
-    text: 'Cada viernes me contabas algo de tu esfuerzo. Me encanta verte perseguir lo que tanto quieres lograr.',
+    text: 'Cada viernes me contabas tus grandes esfuerzos. Me gusta verte esforzarte mucho es como algun tipo de admiracion, puesto que eres la primera persona que de verdad veo que le gusta estudiar y le gusta lo que hace, por mas que no encuentres pacientes estoy seguro que seras la mejor odontologa.',
   },
   {
     emoji: '🤝',
-    title: 'Lo que se cimentó en los viernes',
-    text: 'Sin darnos cuenta, esos viernes se volvieron el cimiento de nuestra amistad.',
+    title: 'Una buena costumbre',
+    text: 'Sin darme cuenta, cada viernes que iba a acompañarte lo hacia cada vez mas seguido y con mas ganas, nose si sera ya costumbre pero la verdad me gusta esa costumbre que cree y agradecido de que de tan poco tiempo que tienes dediques en conversar un rato con tu servidor',
   },
 ]
 

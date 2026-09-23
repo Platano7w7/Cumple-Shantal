@@ -11,10 +11,10 @@ export interface GiftMeta {
 }
 
 export const GIFT_META: GiftMeta[] = [
-  { id: 1, emoji: '🎵', title: 'Playlist para Shantal', tagline: 'Elige la canción o déjala fluir.' },
-  { id: 2, emoji: '📒', title: 'Los viernes', tagline: 'Notas y polaroids de nuestros viernes.' },
-  { id: 3, emoji: '🎮', title: 'Los inicios', tagline: 'Momentos jugando: cómo empezó la amistad.' },
-  { id: 4, emoji: '🧠', title: 'Examen de amistad', tagline: '5 preguntas · 25 puntos. ¿Cuánto me conoces?' },
+  { id: 1, emoji: '🎵', title: 'Playlist para ti p causa', tagline: 'Elige la canción o buscala tu mismo.' },
+  { id: 2, emoji: '📒', title: 'Los viernes de chismesito', tagline: 'Notas y polaroids de nuestros viernes.' },
+  { id: 3, emoji: '🎮', title: 'El inicio del besto duo del mundo', tagline: 'Momentos en la grieta o en roblox.' },
+  { id: 4, emoji: '🧠', title: 'Haber otro examen jiji', tagline: '5 preguntas · 20 puntos. ¿haber si es cierto que somos amigos?' },
 ]
 
 export function getGiftMeta(id: GiftId): GiftMeta {

@@ -42,9 +42,9 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
   {
     prompt: '¿Hace cuánto tiempo aproximadamente?',
     options: [
-      { label: 'Marzo', feedback: '¡Correcto! Ninguna opción estaba mal 💖' },
-      { label: 'Abril', feedback: '¡Correcto! Ninguna opción estaba mal 💖' },
-      { label: 'Febrero', feedback: '¡Correcto! Ninguna opción estaba mal 💖' },
+      { label: 'Desde Marzo', feedback: 'La verdad ni yo me acuerdo :c, pero se que es este año :3' },
+      { label: 'Desde Abril', feedback: 'La verdad ni yo me acuerdo :c, pero se que es este año :3' },
+      { label: 'Desde Febrero', feedback: 'La verdad ni yo me acuerdo :c, pero se que es este año :3' },
     ],
     correct: null,
     points: 5,
@@ -71,22 +71,22 @@ export const QUIZ_RESULTS: QuizResult[] = [
   {
     min: 25,
     title: '🏆 Amistad nivel legendaria',
-    message: '¡Perfecto! Me conoces incluso mejor que yo mismo. Eso se celebra con confeti.',
+    message: 'El diablo me conoces bien, claps para amistad',
   },
   {
     min: 15,
-    title: '🪐 Amistad nivel astronauta',
-    message: 'Impresionante. Sabes más de mí de lo que creen todos los que me rodean.',
+    title: '🪐 Amistad nivel alto',
+    message: 'Bien causa me conoces bien, quien diria que si te acuerdas de cosas de mi.',
   },
   {
     min: 12,
-    title: '💖 Excelente amistad',
+    title: '💖 Buena amistad',
     message: 'Muy bien… y como buena recompensa, hay algo secreto esperándote.',
   },
   {
     min: 0,
-    title: '😂 Amistad en modo práctica',
-    message: 'Uy, creo que nos faltan más partidas y más viernes juntos. Vuelve a intentarlo.',
+    title: '😂Jalada ',
+    message: 'Tite, weno habra mas tiempo para conocernos y darte de nuevo el examen .',
   },
 ]
 
