@@ -1,7 +1,7 @@
 // ── Tarjeta de regalo del hub ────────────────────────────────────────────────
 import { useState } from 'react'
-import type { GiftMeta, GiftId } from '../gift-content'
-import { GIFT_META } from '../gift-content'
+import type { GiftMeta, GiftId } from '../content/hub'
+import { GIFT_META } from '../content/hub'
 
 function GiftSlot({
   meta, unlocked, completed, delay, onClick,

@@ -2,15 +2,8 @@
 // El progreso se guarda en el navegador para que Shantal pueda volver a
 // abrir la página y continuar desde donde quedó.
 
-import type { GiftId } from '../gift-content'
-
-// Video de YouTube recordado del buscador del Regalo 3.
-export interface YoutubeVideo {
-  videoId: string
-  title: string
-  channel: string
-  thumb: string
-}
+import type { GiftId } from '../content/hub'
+import type { YoutubeVideo } from './youtube'
 
 export interface SaveState {
   version: number

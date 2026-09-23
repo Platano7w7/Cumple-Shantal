@@ -2,7 +2,7 @@
 import { useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react'
-import type { GiftMeta } from '../gift-content'
+import type { GiftMeta } from '../content/hub'
 
 // Enfoca el primer elemento interactivo del panel, bloquea el Tab dentro del
 // diálogo y devuelve el foco al elemento que estaba enfocado al abrirlo.
