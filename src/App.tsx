@@ -536,6 +536,7 @@ export default function App() {
           meta={getGiftMeta(openGift)}
           completed={completedGifts[openGift]}
           completable={openGift === 4 ? quizBest > 0 : true}
+          wide={openGift === 2 || openGift === 3}
           onClose={() => setOpenGift(null)}
           onComplete={() => completeGift(openGift)}
         >

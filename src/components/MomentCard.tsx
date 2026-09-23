@@ -23,7 +23,7 @@ function MomentCard({ emoji, title, text }: { emoji: string; title: string; text
         <h3 style={{ fontFamily: "'Cinzel', serif", color: '#ff6ba8', fontSize: 16, fontWeight: 600, marginBottom: 6, textShadow: '0 0 10px #ff2d7888' }}>
           {title}
         </h3>
-        <p style={{ fontFamily: "'Poppins', sans-serif", color: '#e8a0c0', fontSize: 14, fontWeight: 300, lineHeight: 1.6 }}>
+        <p className="moment-card-text" style={{ fontFamily: "'Poppins', sans-serif", color: '#e8a0c0', fontSize: 14, fontWeight: 300, lineHeight: 1.6 }}>
           {text}
         </p>
       </div>

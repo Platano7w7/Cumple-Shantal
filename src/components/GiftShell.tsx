@@ -46,11 +46,12 @@ function useDialogFocusTrap(
 }
 
 function GiftShell({
-  meta, completed, completable = true, onClose, onComplete, children,
+  meta, completed, completable = true, wide = false, onClose, onComplete, children,
 }: {
   meta: GiftMeta
   completed: boolean
   completable?: boolean // false = el regalo solo se puede cerrar (p. ej. quiz sin terminar)
+  wide?: boolean // true = panel más ancho para secciones con mucho texto (viernes, inicios)
   onClose: () => void
   onComplete: () => void
   children: ReactNode
@@ -81,7 +82,7 @@ function GiftShell({
     >
       <div
         ref={panelRef}
-        className="rounded-3xl p-8 max-w-2xl w-full relative"
+        className={`rounded-3xl p-8 ${wide ? 'max-w-4xl' : 'max-w-2xl'} w-full relative`}
         onClick={e => e.stopPropagation()}
         role="dialog"
         aria-modal="true"

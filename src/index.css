@@ -544,6 +544,8 @@ button:focus-visible {
 /* ── Experiencias de regalo (G1 inicios / G2 viernes) ─────────────────────── */
 .gift-opening,
 .gift-closing {
+  max-width: 72ch;
+  margin-inline: auto;
   font-family: 'Poppins', sans-serif;
   font-size: 14.5px;
   font-weight: 300;
@@ -601,6 +603,10 @@ button:focus-visible {
   box-shadow: 0 0 14px #ff2d7855;
 }
 
+.moment-card-text {
+  max-width: 72ch;
+}
+
 /* Notas de los viernes (estilo carta/íntimo) */
 .friday-notes {
   display: flex;
@@ -646,6 +652,7 @@ button:focus-visible {
 }
 
 .friday-note-text {
+  max-width: 72ch;
   font-family: 'Poppins', sans-serif;
   color: #e8a0c0;
   font-size: 14px;
@@ -1085,6 +1092,8 @@ button:focus-visible {
 
 /* ── Carta de cumpleaños ───────────────────────────────────────────────────── */
 .letter-block {
+  max-width: 72ch;
+  margin-inline: auto;
   font-family: 'Poppins', sans-serif;
   font-size: 15px;
   font-weight: 300;
@@ -1398,7 +1407,7 @@ button:focus-visible {
   line-height: 1.7;
   color: #ffd9e8;
   text-shadow: 0 0 10px #ff2d7855;
-  max-width: 420px;
+  max-width: 72ch;
 }
 
 .quiz-secret-hint {
@@ -1564,7 +1573,7 @@ button:focus-visible {
 
 .secret-card {
   position: relative;
-  width: min(460px, 100%);
+  width: min(900px, 100%);
   border-radius: 28px;
   padding: 34px 26px 26px;
   text-align: center;
