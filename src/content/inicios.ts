@@ -9,7 +9,7 @@ export const GAME_OPENING =
 export const GAME_MOMENTS: GameMoment[] = [
   {
     emoji: '🎮',
-    title: ¿'Como nos conocimos?',
+    title: '¿Como nos conocimos?',
     text: 'La verdad amistad no recuerdo exactamente la partida que nos conocimos, solo recuerdo mi postura como emo que no habla y solo jugaba calladito, pero de alguna manera nos agregamos y estabas en la lista de amigos.',
   },
   {
